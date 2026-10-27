@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dimas - Asistente Norteño</title>
+    <title>Dimas</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -107,7 +107,7 @@
 <body>
 
     <div class="card">
-        <h2>🤠 Dimas Norteño</h2>
+        <h2>🤠 Dimas</h2>
         <p id="status-text">Listo al tiro, compadre.</p>
 
         <input type="text" id="userInput" placeholder="Escribe tu orden o háblale..." />
@@ -141,8 +141,8 @@
                 }
 
                 vozActual.lang = 'es-MX'; 
-                vozActual.rate = 1.05; // Fluido y natural
-                vozActual.pitch = 0.95; // Tono de hombre cálido
+                vozActual.rate = 1.05; // Fluido y natural, cero robot
+                vozActual.pitch = 0.95; // Tono de hombre cálido y cercano
                 window.speechSynthesis.speak(vozActual);
             }
         }
@@ -213,7 +213,7 @@
 
             historialChat.push({ de: 'usuario', texto: texto });
 
-            // 1. Detección de Música / Rolita (Abre SnapTube o YouTube al putazo sin fallar)
+            // 1. Detección de Música / Rolita (Abre el selector para atraparlo con SnapTube)
             if (textoLower.includes("reproducir") || textoLower.includes("música") || textoLower.includes("canción") || textoLower.includes("cancion") || textoLower.includes("rola") || textoLower.includes("rolita") || textoLower.includes("pon")) {
                 
                 let busqueda = textoLower
@@ -229,14 +229,14 @@
                     .trim();
 
                 if (busqueda) {
-                    respuesta = `¡Fierro! Abriendo '${busqueda}' al tiro, viejo.`;
+                    respuesta = `¡Fierro! Buscando '${busqueda}' para pasarlo a SnapTube, viejo.`;
                     responseBox.innerText = `Dimas dice: ${respuesta}`;
                     hablarDimas(respuesta);
 
                     setTimeout(() => {
                         let query = encodeURIComponent(busqueda);
-                        let url = `https://m.youtube.com/results?search_query=${query}`;
-                        window.open(url, '_blank');
+                        let url = `https://www.youtube.com/results?search_query=${query}`;
+                        window.location.href = url;
                     }, 1200);
                     return;
                 } else {
@@ -277,7 +277,7 @@
             else if (textoLower.includes("hola") || textoLower.includes("que onda")) {
                 respuesta = "¡Qué onda, compadre! ¿Qué vamos a hacer o qué? Aquí ando al pendiente.";
             } else if (textoLower.includes("nombre")) {
-                respuesta = "Yo soy Dimas, tu asistente personal con todo el estilo norteño y al tiro.";
+                respuesta = "Yo soy Dimas, tu asistente personal al tiro.";
             } else {
                 respuesta = `Recibí tu orden, viejo: '${texto}'. A darle recio con eso.`;
             }
@@ -290,9 +290,6 @@
         function procesarTextoInput() {
             const input = document.getElementById("userInput");
             const texto = input.value.trim();
-            if/ texto / { // (Fixed syntax check mentally: if (texto))
-                
-            }
             if (texto) {
                 ejecutarComando(texto);
                 input.value = "";

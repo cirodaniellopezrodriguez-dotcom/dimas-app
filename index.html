@@ -115,10 +115,12 @@
             border: none;
             border-radius: 8px;
         }
-        /* Si es modo audio, ocultamos visualmente el reproductor pero dejamos que suene el audio */
-        .modo-audio {
+        /* Clase para ocultar el reproductor físicamente cuando sea solo audio automático */
+        .oculto-audio {
             height: 0px !important;
+            opacity: 0;
             overflow: hidden;
+            margin: 0;
         }
     </style>
 </head>
@@ -134,13 +136,13 @@
         <button id="micBtn" class="btn-mic" onclick="alternarEscucha()">🎤 Escuchar voz (Manos libres)</button>
 
         <div class="btn-grupo">
-            <button onclick="ejecutarComando('hola')">👋 Saludar</button>
-            <button onclick="ejecutarComando('pon la rolita de cadetes de linares')">🎵 Música</button>
+            <button onclick="ejecutarComando('pon la rolita de cadetes de linares')">🎵 Rolita</button>
+            <button onclick="ejecutarComando('pon el video de cadetes de linares')">🎬 Video</button>
         </div>
 
         <div id="response-box">Aquí ando al pendiente, viejo.</div>
         
-        <!-- Contenedor inteligente para audio o video -->
+        <!-- Contenedor del reproductor automático embebido -->
         <div id="player-container">
             <iframe id="youtube-frame" src="" allow="autoplay"></iframe>
         </div>
@@ -229,7 +231,7 @@
             }
         }
 
-        async function ejecutarComando(texto) {
+        function ejecutarComando(texto) {
             const textoLower = texto.toLowerCase();
             const responseBox = document.getElementById("response-box");
             const playerContainer = document.getElementById("player-container");
@@ -238,10 +240,10 @@
 
             historialChat.push({ de: 'usuario', texto: texto });
 
-            if (textoLower.includes("reproducir") || textoLower.includes("música") || textoLower.includes("canción") || textoLower.includes("rola") || textoLower.includes("rolita") || textoLower.includes("pon")) {
+            if (textoLower.includes("reproducir") || textoLower.includes("música") || textoLower.includes("canción") || textoLower.includes("cancion") || textoLower.includes("rola") || textoLower.includes("rolita") || textoLower.includes("pon")) {
                 
-                // Detectar si el usuario pidió específicamente el "video"
-                let esVideo = textoLower.includes("video") || textoLower.includes("ver") || textoLower.includes("videoclip");
+                // Detectar si el usuario pidió explícitamente "video" o "ver"
+                let esVideo = textoLower.includes("video") || textoLower.includes("ver");
 
                 let busqueda = textoLower
                     .replace("reproducir", "")
@@ -257,11 +259,11 @@
 
                 if (busqueda) {
                     if (esVideo) {
-                        respuesta = `¡Arre! Poniendo el video de '${busqueda}' en la app, viejo.`;
-                        iframe.classList.remove("modo-audio");
+                        respuesta = `¡Arre! Poniendo el video de '${busqueda}' al tiro, viejo.`;
+                        iframe.classList.remove("oculto-audio"); // Muestra el video
                     } else {
-                        respuesta = `¡Fierro! Poniendo solo el sonidito de '${busqueda}', viejo.`;
-                        iframe.classList.add("modo-audio"); // Oculta el video y deja sonar el audio limpio
+                        respuesta = `¡Fierro! Sonando la rolita '${busqueda}' en automático, viejo.`;
+                        iframe.classList.add("oculto-audio"); // Oculta el cuadro pero deja correr el audio automático
                     }
                     
                     responseBox.innerText = `Dimas dice: ${respuesta}`;
@@ -269,31 +271,12 @@
 
                     playerContainer.style.display = "block";
 
-                    try {
-                        // Buscar de forma limpia el ID del primer video usando una API pública abierta
-                        let apiRes = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(busqueda)}`);
-                        let data = await apiRes.json();
-                        
-                        if (data && data.items && data.items.length > 0) {
-                            // Buscar el primer resultado que sea un video
-                            let videoItem = data.items.find(item => item.type === 'video') || data.items[0];
-                            let videoId = videoItem.videoId;
-                            
-                            // Cargar el reproductor directamente incrustado con autoplay
-                            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-                        } else {
-                            // Plan B si la API de búsqueda se pone pesada
-                            iframe.classList.remove("modo-audio");
-                            iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(busqueda)}&autoplay=1`;
-                        }
-                    } catch (e) {
-                        // Si falla el internet o la API, abrir respaldo directo
-                        iframe.classList.remove("modo-audio");
-                        iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(busqueda)}&autoplay=1`;
-                    }
+                    // Carga directa mediante el embebido oficial con reproducción automática en cascada
+                    let embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(busqueda)}&autoplay=1&enablejsapi=1`;
+                    iframe.src = embedUrl;
                     return;
                 } else {
-                    respuesta = "¿Qué rola quieres que ponga o qué? Dímela bien, viejo.";
+                    respuesta = "¿Qué rolita quieres que ponga o qué? Dímela bien, viejo.";
                 }
             } else if (textoLower.includes("hola") || textoLower.includes("que onda")) {
                 respuesta = "¡Qué onda, compadre! ¿Qué vamos a hacer o qué?";

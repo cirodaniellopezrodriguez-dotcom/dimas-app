@@ -102,19 +102,6 @@
             align-items: center;
             justify-content: center;
         }
-        #player-container {
-            margin-top: 15px;
-            width: 100%;
-            border-radius: 8px;
-            overflow: hidden;
-            display: none;
-        }
-        iframe {
-            width: 100%;
-            height: 180px;
-            border: none;
-            border-radius: 8px;
-        }
     </style>
 </head>
 <body>
@@ -134,9 +121,6 @@
         </div>
 
         <div id="response-box">Aquí ando al pendiente, viejo.</div>
-        
-        <!-- Contenedor donde se va a reproducir la música de chingazo dentro de la app -->
-        <div id="player-container"></div>
     </div>
 
     <script>
@@ -158,7 +142,7 @@
 
                 vozActual.lang = 'es-MX'; 
                 vozActual.rate = 0.95;     
-                vozActual.pitch = 0.2; // Tono extra grave y ronco para quitarle lo chillón
+                vozActual.pitch = 0.2; // Tono grave y macizo
                 window.speechSynthesis.speak(vozActual);
             }
         }
@@ -225,7 +209,6 @@
         function ejecutarComando(texto) {
             const textoLower = texto.toLowerCase();
             const responseBox = document.getElementById("response-box");
-            const playerContainer = document.getElementById("player-container");
             let respuesta = "";
 
             historialChat.push({ de: 'usuario', texto: texto });
@@ -240,14 +223,17 @@
                     .trim();
 
                 if (busqueda) {
-                    respuesta = `¡Arre pues! Poniendo '${busqueda}' de chingazo, viejo.`;
+                    respuesta = `¡Arre pues! Abriendo '${busqueda}' en chiza, viejo.`;
                     
                     responseBox.innerText = `Dimas dice: ${respuesta}`;
                     hablarDimas(respuesta);
 
-                    // Inyectar el reproductor directamente en la app usando YouTube Embed de búsqueda con autoplay
-                    playerContainer.style.display = "block";
-                    playerContainer.innerHTML = `<iframe src="https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(busqueda)}&autoplay=1" allow="autoplay"></iframe>`;
+                    // Abrir la búsqueda de YouTube directo con parámetro de reproducción automática
+                    let url = `https://m.youtube.com/results?search_query=${encodeURIComponent(busqueda)}`;
+                    
+                    setTimeout(() => {
+                        window.open(url, '_blank');
+                    }, 1000);
                     return;
                 } else {
                     respuesta = "¿Qué rola quieres que ponga o qué? Dímela bien, viejo.";

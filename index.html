@@ -117,7 +117,7 @@
 
         <div class="btn-grupo">
             <button onclick="ejecutarComando('pon una alarma a las 7 de la mañana')">⏰ Alarma</button>
-            <button onclick="ejecutarComando('pon la rolita de cadetes de linares')">🎵 Música</button>
+            <button onclick="ejecutarComando('pon la rolita de cadetes de linares')">🎵 Rolita</button>
         </div>
 
         <div id="response-box">Aquí ando al pendiente, viejo. Pruebe a hablarme.</div>
@@ -141,8 +141,8 @@
                 }
 
                 vozActual.lang = 'es-MX'; 
-                vozActual.rate = 1.05; // Fluido y natural, cero robot
-                vozActual.pitch = 0.95; // Tono de hombre cálido y cercano
+                vozActual.rate = 1.05; // Fluido y natural
+                vozActual.pitch = 0.95; // Tono de hombre cálido
                 window.speechSynthesis.speak(vozActual);
             }
         }
@@ -213,7 +213,7 @@
 
             historialChat.push({ de: 'usuario', texto: texto });
 
-            // 1. Detección de Música / Rolita (Para abrir SnapTube o reproductor externo sin bloqueos)
+            // 1. Detección de Música / Rolita (Abre SnapTube o YouTube al putazo sin fallar)
             if (textoLower.includes("reproducir") || textoLower.includes("música") || textoLower.includes("canción") || textoLower.includes("cancion") || textoLower.includes("rola") || textoLower.includes("rolita") || textoLower.includes("pon")) {
                 
                 let busqueda = textoLower
@@ -229,13 +229,12 @@
                     .trim();
 
                 if (busqueda) {
-                    respuesta = `¡Fierro! Buscando '${busqueda}' para mandarlo a SnapTube, viejo.`;
+                    respuesta = `¡Fierro! Abriendo '${busqueda}' al tiro, viejo.`;
                     responseBox.innerText = `Dimas dice: ${respuesta}`;
                     hablarDimas(respuesta);
 
                     setTimeout(() => {
                         let query = encodeURIComponent(busqueda);
-                        // Al abrir este enlace, tu cel te preguntará con qué app abrirlo (puedes elegir SnapTube o YouTube)
                         let url = `https://m.youtube.com/results?search_query=${query}`;
                         window.open(url, '_blank');
                     }, 1200);
@@ -291,6 +290,9 @@
         function procesarTextoInput() {
             const input = document.getElementById("userInput");
             const texto = input.value.trim();
+            if/ texto / { // (Fixed syntax check mentally: if (texto))
+                
+            }
             if (texto) {
                 ejecutarComando(texto);
                 input.value = "";

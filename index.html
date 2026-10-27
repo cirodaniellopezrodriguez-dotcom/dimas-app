@@ -141,8 +141,8 @@
                 }
 
                 vozActual.lang = 'es-MX'; 
-                vozActual.rate = 0.95;     
-                vozActual.pitch = 0.2; // Tono grave y macizo
+                vozActual.rate = 1.0;     
+                vozActual.pitch = 0.85; // Tono natural de hombre normal, sin sustos
                 window.speechSynthesis.speak(vozActual);
             }
         }
@@ -223,17 +223,19 @@
                     .trim();
 
                 if (busqueda) {
-                    respuesta = `¡Arre pues! Abriendo '${busqueda}' en chiza, viejo.`;
+                    respuesta = `¡Arre pues! Abriendo '${busqueda}' en la app de YouTube, viejo.`;
                     
                     responseBox.innerText = `Dimas dice: ${respuesta}`;
                     hablarDimas(respuesta);
 
-                    // Abrir la búsqueda de YouTube directo con parámetro de reproducción automática
-                    let url = `https://m.youtube.com/results?search_query=${encodeURIComponent(busqueda)}`;
-                    
                     setTimeout(() => {
-                        window.open(url, '_blank');
-                    }, 1000);
+                        let query = encodeURIComponent(busqueda);
+                        if (/Android/i.test(navigator.userAgent)) {
+                            window.location.href = `intent://www.youtube.com/results?search_query=${query}#Intent;package=com.google.android.youtube;scheme=https;end;`;
+                        } else {
+                            window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
+                        }
+                    }, 1200);
                     return;
                 } else {
                     respuesta = "¿Qué rola quieres que ponga o qué? Dímela bien, viejo.";

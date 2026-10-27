@@ -110,18 +110,18 @@
     </div>
 
     <script>
-        // Memoria de la conversación para que Dimas se adapte
+        // Memoria y variable global para la voz (evita que el cel la silencie)
         let historialChat = [];
+        let vozActual = null;
 
         function hablarDimas(texto) {
             if ('speechSynthesis' in window) {
-                // Cancelar cualquier voz anterior para que hable al putazo
                 window.speechSynthesis.cancel();
-                let utterance = new SpeechSynthesisUtterance(texto);
-                utterance.lang = 'es-MX'; // Español México
-                utterance.rate = 1.0;     // Velocidad normal
-                utterance.pitch = 0.9;    // Tono un poco más recio/grueso
-                window.speechSynthesis.speak(utterance);
+                vozActual = new SpeechSynthesisUtterance(texto);
+                vozActual.lang = 'es-MX'; // Español de México
+                vozActual.rate = 1.0;     
+                vozActual.pitch = 0.9;    // Tono recio
+                window.speechSynthesis.speak(vozActual);
             }
         }
 
@@ -130,7 +130,6 @@
             const responseBox = document.getElementById("response-box");
             let respuesta = "";
 
-            // Guardar en la memoria la orden del usuario
             historialChat.push({ de: 'usuario', texto: texto });
 
             if (textoLower.includes("reproducir") || textoLower.includes("música") || textoLower.includes("canción") || textoLower.includes("rola")) {
@@ -147,17 +146,14 @@
             } else if (textoLower.includes("nombre")) {
                 respuesta = "Yo soy Dimas, tu asistente personal con todo el estilo norteño.";
             } else if (historialChat.length > 3) {
-                // Dimas se adapta basándose en que ya llevan cotorreando un rato
                 respuesta = `A ver, compadre, sobre eso que me dices de '${texto}', ¡le seguimos dando con todo al proyecto!`;
             } else {
                 respuesta = `Recibí tu orden, viejo: '${texto}'. A darle recio.`;
             }
 
-            // Mostrar en pantalla y hablar en voz alta
             responseBox.innerText = `Dimas dice: ${respuesta}`;
             hablarDimas(respuesta);
 
-            // Guardar respuesta de Dimas en la memoria
             historialChat.push({ de: 'dimas', texto: respuesta });
         }
 
@@ -170,7 +166,6 @@
             }
         }
 
-        // Enviar con la tecla Enter
         document.getElementById("userInput").addEventListener("keypress", function(event) {
             if (event.key === "Enter") {
                 procesarTextoInput();

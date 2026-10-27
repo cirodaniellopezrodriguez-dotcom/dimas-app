@@ -102,24 +102,14 @@
             align-items: center;
             justify-content: center;
         }
-        #player-container {
+        #audio-container {
             margin-top: 15px;
             width: 100%;
-            border-radius: 8px;
-            overflow: hidden;
             display: none;
         }
-        iframe {
+        audio {
             width: 100%;
-            height: 180px;
-            border: none;
             border-radius: 8px;
-        }
-        .oculto-audio {
-            height: 0px !important;
-            opacity: 0;
-            overflow: hidden;
-            margin: 0;
         }
     </style>
 </head>
@@ -136,13 +126,14 @@
 
         <div class="btn-grupo">
             <button onclick="ejecutarComando('pon la rolita de cadetes de linares')">🎵 Rolita</button>
-            <button onclick="ejecutarComando('pon el video de cadetes de linares')">🎬 Video</button>
+            <button onclick="ejecutarComando('hola')">👋 Saludar</button>
         </div>
 
         <div id="response-box">Aquí ando al pendiente, viejo.</div>
         
-        <div id="player-container">
-            <iframe id="youtube-frame" src="" allow="autoplay"></iframe>
+        <!-- Reproductor de audio nativo limpio (sin anuncios ni bloqueos) -->
+        <div id="audio-container">
+            <audio id="audioPlayer" controls autoplay></audio>
         </div>
     </div>
 
@@ -165,7 +156,7 @@
 
                 vozActual.lang = 'es-MX'; 
                 vozActual.rate = 1.0;     
-                vozActual.pitch = 0.85; 
+                vozActual.pitch = 0.85; // Voz de hombre normal
                 window.speechSynthesis.speak(vozActual);
             }
         }
@@ -229,8 +220,7 @@
             }
         }
 
-        async function buscarVideoId(query) {
-            // Lista de servidores públicos de respaldo para buscar el video sin errores
+        async function obtenerStreamAudio(query) {
             const instancias = [
                 "https://pipedapi.kavin.rocks",
                 "https://pipedapi.yt.artemislabs.eu",
@@ -239,18 +229,29 @@
 
             for (let instancia of instancias) {
                 try {
+                    // 1. Buscar el video
                     let res = await fetch(`${instancia}/search?q=${encodeURIComponent(query)}`);
                     let data = await res.json();
                     if (data && data.items && data.items.length > 0) {
                         let videoItem = data.items.find(item => item.type === 'video') || data.items[0];
-                        if (videoItem.videoId) return videoItem.videoId;
-                        if (videoItem.url && videoItem.url.includes('v=')) {
-                            let partes = videoItem.url.split('v=');
-                            return partes[1].split('&')[0];
+                        let videoId = videoItem.videoId || videoItem.url.split('v=')[1]?.split('&')[0];
+                        
+                        if (videoId) {
+                            // 2. Obtener los enlaces de audio directo del video (saltándose el reproductor bloqueado)
+                            let streamRes = await fetch(`${instancia}/streams/${videoId}`);
+                            let streamData = await streamRes.json();
+                            
+                            if (streamData && streamData.audioStreams && streamData.audioStreams.length > 0) {
+                                // Elegir el mejor stream de audio disponible
+                                let audioObj = streamData.audioStreams.find(a => a.mimeType.includes('audio/mp4')) || streamData.audioStreams[0];
+                                if (audioObj && audioObj.url) {
+                                    return audioObj.url;
+                                }
+                            }
                         }
                     }
                 } catch (e) {
-                    continue; // Si falla un servidor, prueba con el que sigue automáticamente
+                    continue;
                 }
             }
             return null;
@@ -259,16 +260,14 @@
         async function ejecutarComando(texto) {
             const textoLower = texto.toLowerCase();
             const responseBox = document.getElementById("response-box");
-            const playerContainer = document.getElementById("player-container");
-            const iframe = document.getElementById("youtube-frame");
+            const audioContainer = document.getElementById("audio-container");
+            const audioPlayer = document.getElementById("audioPlayer");
             let respuesta = "";
 
             historialChat.push({ de: 'usuario', texto: texto });
 
             if (textoLower.includes("reproducir") || textoLower.includes("música") || textoLower.includes("canción") || textoLower.includes("cancion") || textoLower.includes("rola") || textoLower.includes("rolita") || textoLower.includes("pon")) {
                 
-                let esVideo = textoLower.includes("video") || textoLower.includes("ver");
-
                 let busqueda = textoLower
                     .replace("reproducir", "")
                     .replace("música", "")
@@ -282,27 +281,22 @@
                     .trim();
 
                 if (busqueda) {
-                    if (esVideo) {
-                        respuesta = `¡Arre! Poniendo el video de '${busqueda}' al tiro, viejo.`;
-                        iframe.classList.remove("oculto-audio");
-                    } else {
-                        respuesta = `¡Fierro! Sonando la rolita '${busqueda}' en automático, viejo.`;
-                        iframe.classList.add("oculto-audio"); // Oculta el cuadro pero reproduce el audio solo
-                    }
-                    
+                    respuesta = `¡Fierro! Buscando y sonando '${busqueda}' en automático, viejo.`;
                     responseBox.innerText = `Dimas dice: ${respuesta}`;
                     hablarDimas(respuesta);
-                    playerContainer.style.display = "block";
 
-                    // Buscar el ID exacto del video usando los servidores de respaldo
-                    let videoId = await buscarVideoId(busqueda);
+                    // Traer el link de audio directo sin pasar por iframe bloqueado
+                    let audioUrl = await obtenerStreamAudio(busqueda);
 
-                    if (videoId) {
-                        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                    if (audioUrl) {
+                        audioContainer.style.display = "block";
+                        audioPlayer.src = audioUrl;
+                        audioPlayer.play().catch(err => {
+                            console.log("Autoplay bloqueado por el navegador, dale play al botoncito de audio.");
+                        });
                     } else {
-                        // Respaldo definitivo si los servidores tardan: usa un enlace directo limpio
-                        iframe.classList.remove("oculto-audio");
-                        iframe.src = `https://www.youtube.com/embed/5U235g5_hms?autoplay=1`; 
+                        responseBox.innerText = `Dimas dice: No encontré esa rolita, compadre. Pruebe con otra.`;
+                        hablarDimas("No encontré esa rolita, compadre.");
                     }
                     return;
                 } else {

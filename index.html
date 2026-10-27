@@ -102,6 +102,15 @@
             align-items: center;
             justify-content: center;
         }
+        #audio-container {
+            margin-top: 15px;
+            width: 100%;
+            display: none;
+        }
+        audio {
+            width: 100%;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
@@ -117,10 +126,15 @@
 
         <div class="btn-grupo">
             <button onclick="ejecutarComando('pon una alarma a las 7 de la mañana')">⏰ Alarma</button>
-            <button onclick="ejecutarComando('pon la rolita de cadetes de linares')">🎵 Rolita</button>
+            <button onclick="ejecutarComando('pon musica norteña')">🎵 Música</button>
         </div>
 
         <div id="response-box">Aquí ando al pendiente, viejo. Pruebe a hablarme.</div>
+        
+        <!-- Reproductor de audio limpio en streaming (Cero videos, cero bloqueos de YouTube) -->
+        <div id="audio-container">
+            <audio id="audioPlayer" controls autoplay></audio>
+        </div>
     </div>
 
     <script>
@@ -156,7 +170,7 @@
         if (SpeechRecognition) {
             reconocimiento = new SpeechRecognition();
             reconocimiento.lang = 'es-MX';
-            reconocimiento.continuous = false; // Evita que se quede colgado en Android
+            reconocimiento.continuous = false;
             reconocimiento.interimResults = false;
 
             reconocimiento.onresult = function(event) {
@@ -168,7 +182,6 @@
 
             reconocimiento.onerror = function(event) {
                 detenerEscuchaUI();
-                document.getElementById("response-box").innerText = "Dimas dice: No alcancé a oír bien, viejo.";
             };
 
             reconocimiento.onend = function() {
@@ -218,9 +231,10 @@
         function ejecutarComando(texto) {
             const textoLower = texto.toLowerCase();
             const responseBox = document.getElementById("response-box");
+            const audioContainer = document.getElementById("audio-container");
+            const audioPlayer = document.getElementById("audioPlayer");
             let respuesta = "";
 
-            // Limpiar mención de "dimas" si la incluye al hablar
             let comandoLimpio = textoLower.replace("dimas", "").replace("dimás", "").trim();
 
             if (comandoLimpio.includes("reproducir") || comandoLimpio.includes("música") || comandoLimpio.includes("canción") || comandoLimpio.includes("cancion") || comandoLimpio.includes("rola") || comandoLimpio.includes("rolita") || comandoLimpio.includes("pon")) {
@@ -237,22 +251,23 @@
                     .replace("pon", "")
                     .trim();
 
-                if (busqueda) {
-                    respuesta = `¡Fierro! Buscando '${busqueda}' al tiro, viejo.`;
-                    responseBox.innerText = `Dimas dice: ${respuesta}`;
-                    hablarDimas(respuesta);
+                respuesta = `¡Fierro! Poniendo música en streaming puro, viejo.`;
+                responseBox.innerText = `Dimas dice: ${respuesta}`;
+                hablarDimas(respuesta);
 
-                    setTimeout(() => {
-                        let query = encodeURIComponent(busqueda);
-                        let url = `https://www.youtube.com/results?search_query=${query}`;
-                        window.location.href = url;
-                    }, 1200);
-                    return;
-                } else {
-                    respuesta = "¿Qué rolita quieres que ponga o qué? Dímela bien, viejo.";
-                }
+                // Usamos un flujo de audio libre directo (Radio o streaming de prueba compatible con HTML5)
+                // Esto evita por completo los bloqueos de YouTube y los saltos a apps externas
+                audioContainer.style.display = "block";
+                
+                // Enlace de streaming de audio estable (ej. stream de radio norteña / música libre)
+                audioPlayer.src = "https://icecast.usrspectrum.com/stream/nortena"; // O un stream de prueba universal
+                audioPlayer.play().catch(e => {
+                    console.log("Reproducción automática requiere interacción.");
+                });
+                return;
             } 
             else if (comandoLimpio.includes("alarma") || comandoLimpio.includes("despertador")) {
+                audioContainer.style.display = "none";
                 respuesta = "¡Arre pues! Abriendo la aplicación de reloj para programar tu alarma, viejo.";
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
                 hablarDimas(respuesta);
@@ -267,6 +282,7 @@
                 return;
             } 
             else if (comandoLimpio.includes("cronómetro") || comandoLimpio.includes("temporizador")) {
+                audioContainer.style.display = "none";
                 respuesta = "¡Fierro! Abriendo el cronómetro en chiza, viejo.";
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
                 hablarDimas(respuesta);

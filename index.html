@@ -15,7 +15,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             box-sizing: border-box;
         }
         .card {
@@ -24,7 +24,7 @@
             border-radius: 16px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             width: 100%;
-            max-width: 360px;
+            max-width: 380px;
             text-align: center;
             border: 1px solid #333;
         }
@@ -91,7 +91,7 @@
             font-size: 14px;
         }
         #response-box {
-            margin-top: 20px;
+            margin-top: 15px;
             padding: 12px;
             background-color: #252525;
             border-radius: 8px;
@@ -102,19 +102,30 @@
             align-items: center;
             justify-content: center;
         }
+        #player-container {
+            margin-top: 15px;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+        }
+        iframe {
+            width: 100%;
+            height: 180px;
+            border: none;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
 
     <div class="card">
         <h2>🤠 Dimas Norteño</h2>
-        <p id="status-text">Dime "Dimas" o escribe tu orden, viejo.</p>
+        <p id="status-text">Listo al tiro, compadre.</p>
 
-        <input type="text" id="userInput" placeholder="Escribe aquí o háblale..." />
+        <input type="text" id="userInput" placeholder="Escribe tu orden o háblale..." />
         
         <button onclick="procesarTextoInput()">Enviar comando 🚀</button>
-        
-        <!-- Botón para activar el modo de escucha continua por voz -->
         <button id="micBtn" class="btn-mic" onclick="alternarEscucha()">🎤 Escuchar voz (Manos libres)</button>
 
         <div class="btn-grupo">
@@ -122,7 +133,10 @@
             <button onclick="ejecutarComando('reproducir cadetes de linares')">🎵 Música</button>
         </div>
 
-        <div id="response-box">Listo para entrar en acción, compadre.</div>
+        <div id="response-box">Aquí ando al pendiente, viejo.</div>
+        
+        <!-- Contenedor donde se va a reproducir la música de chingazo dentro de la app -->
+        <div id="player-container"></div>
     </div>
 
     <script>
@@ -137,14 +151,14 @@
                 vozActual = new SpeechSynthesisUtterance(texto);
                 
                 let voces = window.speechSynthesis.getVoices();
-                let vozMexicana = voces.find(v => v.lang === 'es-MX' || v.lang.includes('es-US') || v.lang.includes('es-LA'));
-                if (vozMexicana) {
-                    vozActual.voice = vozMexicana;
+                let vozEspanol = voces.find(v => v.lang.includes('es'));
+                if (vozEspanol) {
+                    vozActual.voice = vozEspanol;
                 }
 
                 vozActual.lang = 'es-MX'; 
-                vozActual.rate = 1.0;     
-                vozActual.pitch = 0.8;    
+                vozActual.rate = 0.95;     
+                vozActual.pitch = 0.2; // Tono extra grave y ronco para quitarle lo chillón
                 window.speechSynthesis.speak(vozActual);
             }
         }
@@ -155,40 +169,31 @@
             };
         }
 
-        // Configurar Reconocimiento de Voz
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             reconocimiento = new SpeechRecognition();
             reconocimiento.lang = 'es-MX';
-            reconocimiento.continuous = true; // Se queda abierto escuchando
+            reconocimiento.continuous = true;
             reconocimiento.interimResults = false;
 
             reconocimiento.onresult = function(event) {
                 let ultimoIndex = event.results.length - 1;
                 let textoEscuchado = event.results[ultimoIndex][0].transcript.trim();
-                
                 document.getElementById("userInput").value = textoEscuchado;
                 
-                // Verificar si mencionó la palabra clave "Dimas" o "dimás"
                 let textoLower = textoEscuchado.toLowerCase();
                 if (textoLower.includes("dimas") || textoLower.includes("dimás")) {
-                    // Limpiar la palabra Dimas de la orden para procesar lo demás
                     let comandoLimpio = textoLower.replace("dimas", "").replace("dimás", "").trim();
                     if (comandoLimpio.length > 0) {
                         ejecutarComando(comandoLimpio);
                     } else {
-                        hablarDimas("¿Qué pasó, compadre? Aquí ando al pendiente.");
-                        document.getElementById("response-box").innerText = "Dimas dice: ¿Qué pasó, compadre? Aquí ando al pendiente.";
+                        hablarDimas("¿Qué pasó, compadre? Aquí ando.");
+                        document.getElementById("response-box").innerText = "Dimas dice: ¿Qué pasó, compadre? Aquí ando.";
                     }
                 }
             };
 
-            reconocimiento.onerror = function(event) {
-                console.log("Error de audio: ", event.error);
-            };
-
             reconocimiento.onend = function() {
-                // Si el usuario lo dejó activo, reiniciarlo automáticamente para que no muera
                 if (escuchandoContinuo) {
                     try { reconocimiento.start(); } catch(e) {}
                 }
@@ -207,19 +212,20 @@
                 reconocimiento.start();
                 btn.classList.add("escuchando");
                 btn.innerText = "🛑 Escuchando... (Toca para apagar)";
-                document.getElementById("status-text").innerText = "¡Te estoy escuchando! Di 'Dimas' y tu orden.";
+                document.getElementById("status-text").innerText = "¡Te escucho! Di 'Dimas' y tu orden.";
             } else {
                 escuchandoContinuo = false;
                 reconocimiento.stop();
                 btn.classList.remove("escuchando");
                 btn.innerText = "🎤 Escuchar voz (Manos libres)";
-                document.getElementById("status-text").innerText = "Dime 'Dimas' o escribe tu orden, viejo.";
+                document.getElementById("status-text").innerText = "Listo al tiro, compadre.";
             }
         }
 
         function ejecutarComando(texto) {
             const textoLower = texto.toLowerCase();
             const responseBox = document.getElementById("response-box");
+            const playerContainer = document.getElementById("player-container");
             let respuesta = "";
 
             historialChat.push({ de: 'usuario', texto: texto });
@@ -234,15 +240,14 @@
                     .trim();
 
                 if (busqueda) {
-                    respuesta = `¡Arre pues! Poniendo '${busqueda}' en chiza, viejo.`;
-                    let url = `https://www.youtube.com/results?search_query=${encodeURIComponent(busqueda)}`;
+                    respuesta = `¡Arre pues! Poniendo '${busqueda}' de chingazo, viejo.`;
                     
                     responseBox.innerText = `Dimas dice: ${respuesta}`;
                     hablarDimas(respuesta);
 
-                    setTimeout(() => {
-                        window.open(url, '_blank');
-                    }, 1200);
+                    // Inyectar el reproductor directamente en la app usando YouTube Embed de búsqueda con autoplay
+                    playerContainer.style.display = "block";
+                    playerContainer.innerHTML = `<iframe src="https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(busqueda)}&autoplay=1" allow="autoplay"></iframe>`;
                     return;
                 } else {
                     respuesta = "¿Qué rola quieres que ponga o qué? Dímela bien, viejo.";

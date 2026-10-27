@@ -124,10 +124,9 @@
     </div>
 
     <script>
-        let historialChat = [];
         let vozActual = null;
         let reconocimiento = null;
-        let escuchandoContinuo = false;
+        let escuchando = false;
 
         function hablarDimas(texto) {
             if ('speechSynthesis' in window) {
@@ -141,8 +140,8 @@
                 }
 
                 vozActual.lang = 'es-MX'; 
-                vozActual.rate = 1.05; // Fluido y natural, cero robot
-                vozActual.pitch = 0.95; // Tono de hombre cálido y cercano
+                vozActual.rate = 1.05; 
+                vozActual.pitch = 0.95; 
                 window.speechSynthesis.speak(vozActual);
             }
         }
@@ -157,30 +156,23 @@
         if (SpeechRecognition) {
             reconocimiento = new SpeechRecognition();
             reconocimiento.lang = 'es-MX';
-            reconocimiento.continuous = true;
+            reconocimiento.continuous = false; // Evita que se quede colgado en Android
             reconocimiento.interimResults = false;
 
             reconocimiento.onresult = function(event) {
-                let ultimoIndex = event.results.length - 1;
-                let textoEscuchado = event.results[ultimoIndex][0].transcript.trim();
+                let textoEscuchado = event.results[0][0].transcript.trim();
                 document.getElementById("userInput").value = textoEscuchado;
-                
-                let textoLower = textoEscuchado.toLowerCase();
-                if (textoLower.includes("dimas") || textoLower.includes("dimás")) {
-                    let comandoLimpio = textoLower.replace("dimas", "").replace("dimás", "").trim();
-                    if (comandoLimpio.length > 0) {
-                        ejecutarComando(comandoLimpio);
-                    } else {
-                        hablarDimas("¿Qué pasó, compadre? Diga usted, aquí ando al tiro.");
-                        document.getElementById("response-box").innerText = "Dimas dice: ¿Qué pasó, compadre?";
-                    }
-                }
+                detenerEscuchaUI();
+                ejecutarComando(textoEscuchado);
+            };
+
+            reconocimiento.onerror = function(event) {
+                detenerEscuchaUI();
+                document.getElementById("response-box").innerText = "Dimas dice: No alcancé a oír bien, viejo.";
             };
 
             reconocimiento.onend = function() {
-                if (escuchandoContinuo) {
-                    try { reconocimiento.start(); } catch(e) {}
-                }
+                detenerEscuchaUI();
             };
         }
 
@@ -191,18 +183,35 @@
             }
 
             const btn = document.getElementById("micBtn");
-            if (!escuchandoContinuo) {
-                escuchandoContinuo = true;
-                reconocimiento.start();
-                btn.classList.add("escuchando");
-                btn.innerText = "🛑 Escuchando... (Toca para apagar)";
-                document.getElementById("status-text").innerText = "¡Te escucho! Di 'Dimas' y tu orden.";
+            if (!escuchando) {
+                try {
+                    escuchando = true;
+                    reconocimiento.start();
+                    btn.classList.add("escuchando");
+                    btn.innerText = "🛑 Escuchando... (Hable ahora)";
+                    document.getElementById("status-text").innerText = "Te escucho, compadre...";
+                } catch(e) {
+                    escuchando = false;
+                    detenerEscuchaUI();
+                }
             } else {
-                escuchandoContinuo = false;
-                reconocimiento.stop();
+                try {
+                    reconocimiento.stop();
+                } catch(e) {}
+                detenerEscuchaUI();
+            }
+        }
+
+        function detenerEscuchaUI() {
+            escuchando = false;
+            const btn = document.getElementById("micBtn");
+            if (btn) {
                 btn.classList.remove("escuchando");
                 btn.innerText = "🎤 Escuchar voz (Manos libres)";
-                document.getElementById("status-text").innerText = "Listo al tiro, compadre.";
+            }
+            const status = document.getElementById("status-text");
+            if (status) {
+                status.innerText = "Listo al tiro, compadre.";
             }
         }
 
@@ -211,12 +220,12 @@
             const responseBox = document.getElementById("response-box");
             let respuesta = "";
 
-            historialChat.push({ de: 'usuario', texto: texto });
+            // Limpiar mención de "dimas" si la incluye al hablar
+            let comandoLimpio = textoLower.replace("dimas", "").replace("dimás", "").trim();
 
-            // 1. Detección de Música / Rolita (Abre el selector para atraparlo con SnapTube)
-            if (textoLower.includes("reproducir") || textoLower.includes("música") || textoLower.includes("canción") || textoLower.includes("cancion") || textoLower.includes("rola") || textoLower.includes("rolita") || textoLower.includes("pon")) {
+            if (comandoLimpio.includes("reproducir") || comandoLimpio.includes("música") || comandoLimpio.includes("canción") || comandoLimpio.includes("cancion") || comandoLimpio.includes("rola") || comandoLimpio.includes("rolita") || comandoLimpio.includes("pon")) {
                 
-                let busqueda = textoLower
+                let busqueda = comandoLimpio
                     .replace("reproducir", "")
                     .replace("música", "")
                     .replace("canción", "")
@@ -229,7 +238,7 @@
                     .trim();
 
                 if (busqueda) {
-                    respuesta = `¡Fierro! Buscando '${busqueda}' para pasarlo a SnapTube, viejo.`;
+                    respuesta = `¡Fierro! Buscando '${busqueda}' al tiro, viejo.`;
                     responseBox.innerText = `Dimas dice: ${respuesta}`;
                     hablarDimas(respuesta);
 
@@ -243,8 +252,7 @@
                     respuesta = "¿Qué rolita quieres que ponga o qué? Dímela bien, viejo.";
                 }
             } 
-            // 2. Detección de Alarmas
-            else if (textoLower.includes("alarma") || textoLower.includes("despertador")) {
+            else if (comandoLimpio.includes("alarma") || comandoLimpio.includes("despertador")) {
                 respuesta = "¡Arre pues! Abriendo la aplicación de reloj para programar tu alarma, viejo.";
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
                 hablarDimas(respuesta);
@@ -258,8 +266,7 @@
                 }, 1200);
                 return;
             } 
-            // 3. Detección de Cronómetros
-            else if (textoLower.includes("cronómetro") || textoLower.includes("temporizador")) {
+            else if (comandoLimpio.includes("cronómetro") || comandoLimpio.includes("temporizador")) {
                 respuesta = "¡Fierro! Abriendo el cronómetro en chiza, viejo.";
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
                 hablarDimas(respuesta);
@@ -273,10 +280,9 @@
                 }, 1200);
                 return;
             }
-            // 4. Saludos y charla
-            else if (textoLower.includes("hola") || textoLower.includes("que onda")) {
+            else if (comandoLimpio.includes("hola") || comandoLimpio.includes("que onda")) {
                 respuesta = "¡Qué onda, compadre! ¿Qué vamos a hacer o qué? Aquí ando al pendiente.";
-            } else if (textoLower.includes("nombre")) {
+            } else if (comandoLimpio.includes("nombre")) {
                 respuesta = "Yo soy Dimas, tu asistente personal al tiro.";
             } else {
                 respuesta = `Recibí tu orden, viejo: '${texto}'. A darle recio con eso.`;
@@ -284,7 +290,6 @@
 
             responseBox.innerText = `Dimas dice: ${respuesta}`;
             hablarDimas(respuesta);
-            historialChat.push({ de: 'dimas', texto: respuesta });
         }
 
         function procesarTextoInput() {

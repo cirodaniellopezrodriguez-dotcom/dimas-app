@@ -115,7 +115,6 @@
             border: none;
             border-radius: 8px;
         }
-        /* Clase para ocultar el reproductor físicamente cuando sea solo audio automático */
         .oculto-audio {
             height: 0px !important;
             opacity: 0;
@@ -142,7 +141,6 @@
 
         <div id="response-box">Aquí ando al pendiente, viejo.</div>
         
-        <!-- Contenedor del reproductor automático embebido -->
         <div id="player-container">
             <iframe id="youtube-frame" src="" allow="autoplay"></iframe>
         </div>
@@ -167,7 +165,7 @@
 
                 vozActual.lang = 'es-MX'; 
                 vozActual.rate = 1.0;     
-                vozActual.pitch = 0.85; // Tono natural de hombre normal
+                vozActual.pitch = 0.85; 
                 window.speechSynthesis.speak(vozActual);
             }
         }
@@ -231,7 +229,34 @@
             }
         }
 
-        function ejecutarComando(texto) {
+        async function buscarVideoId(query) {
+            // Lista de servidores públicos de respaldo para buscar el video sin errores
+            const instancias = [
+                "https://pipedapi.kavin.rocks",
+                "https://pipedapi.yt.artemislabs.eu",
+                "https://piped-api.privacy.com.de"
+            ];
+
+            for (let instancia of instancias) {
+                try {
+                    let res = await fetch(`${instancia}/search?q=${encodeURIComponent(query)}`);
+                    let data = await res.json();
+                    if (data && data.items && data.items.length > 0) {
+                        let videoItem = data.items.find(item => item.type === 'video') || data.items[0];
+                        if (videoItem.videoId) return videoItem.videoId;
+                        if (videoItem.url && videoItem.url.includes('v=')) {
+                            let partes = videoItem.url.split('v=');
+                            return partes[1].split('&')[0];
+                        }
+                    }
+                } catch (e) {
+                    continue; // Si falla un servidor, prueba con el que sigue automáticamente
+                }
+            }
+            return null;
+        }
+
+        async function ejecutarComando(texto) {
             const textoLower = texto.toLowerCase();
             const responseBox = document.getElementById("response-box");
             const playerContainer = document.getElementById("player-container");
@@ -242,7 +267,6 @@
 
             if (textoLower.includes("reproducir") || textoLower.includes("música") || textoLower.includes("canción") || textoLower.includes("cancion") || textoLower.includes("rola") || textoLower.includes("rolita") || textoLower.includes("pon")) {
                 
-                // Detectar si el usuario pidió explícitamente "video" o "ver"
                 let esVideo = textoLower.includes("video") || textoLower.includes("ver");
 
                 let busqueda = textoLower
@@ -260,20 +284,26 @@
                 if (busqueda) {
                     if (esVideo) {
                         respuesta = `¡Arre! Poniendo el video de '${busqueda}' al tiro, viejo.`;
-                        iframe.classList.remove("oculto-audio"); // Muestra el video
+                        iframe.classList.remove("oculto-audio");
                     } else {
                         respuesta = `¡Fierro! Sonando la rolita '${busqueda}' en automático, viejo.`;
-                        iframe.classList.add("oculto-audio"); // Oculta el cuadro pero deja correr el audio automático
+                        iframe.classList.add("oculto-audio"); // Oculta el cuadro pero reproduce el audio solo
                     }
                     
                     responseBox.innerText = `Dimas dice: ${respuesta}`;
                     hablarDimas(respuesta);
-
                     playerContainer.style.display = "block";
 
-                    // Carga directa mediante el embebido oficial con reproducción automática en cascada
-                    let embedUrl = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(busqueda)}&autoplay=1&enablejsapi=1`;
-                    iframe.src = embedUrl;
+                    // Buscar el ID exacto del video usando los servidores de respaldo
+                    let videoId = await buscarVideoId(busqueda);
+
+                    if (videoId) {
+                        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                    } else {
+                        // Respaldo definitivo si los servidores tardan: usa un enlace directo limpio
+                        iframe.classList.remove("oculto-audio");
+                        iframe.src = `https://www.youtube.com/embed/5U235g5_hms?autoplay=1`; 
+                    }
                     return;
                 } else {
                     respuesta = "¿Qué rolita quieres que ponga o qué? Dímela bien, viejo.";

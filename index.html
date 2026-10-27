@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dimas - Manos Libres</title>
+    <title>Dimas - Sistema de Tiempo y Voz</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -53,7 +53,7 @@
             border-color: #ff5252;
         }
         button {
-            background-color: #ff5252;
+            background-color: #00897b;
             color: white;
             border: none;
             padding: 14px 20px;
@@ -66,12 +66,9 @@
             transition: background 0.2s;
         }
         button:active {
-            background-color: #ff1744;
+            background-color: #00695c;
         }
-        .btn-manos-libres {
-            background-color: #00897b;
-        }
-        .btn-manos-libres.activo {
+        button.activo {
             background-color: #d32f2f;
             animation: latido 1.5s infinite;
         }
@@ -108,28 +105,29 @@
 
     <div class="card">
         <h2>🤠 Dimas</h2>
-        <div id="status-badge" class="status-badge badge-inactivo">Manos Libres Apagado</div>
-        <p id="status-text">Pícale al botón para iniciar la conversación continua.</p>
+        <div id="status-badge" class="status-badge badge-inactivo">Sistema en Pausa</div>
+        <p id="status-text">Inicia el sistema para platicar con Dimas.</p>
 
         <input type="text" id="userInput" placeholder="Escribe tu orden o háblale..." />
         
-        <button onclick="procesarTextoInput()">Enviar comando 🚀</button>
-        <button id="mlBtn" class="btn-manos-libres" onclick="alternarManosLibres()">🎙️ Iniciar Manos Libres</button>
+        <button onclick="procesarTextoInput()">Enviar comando escrito 🚀</button>
+        <button id="mainBtn" onclick="alternarSistemaVoz()">🎙️ Iniciar Conversación</button>
 
         <div id="response-box">Aquí ando al pendiente, viejo.</div>
     </div>
 
     <script>
         let reconocimiento = null;
-        let manosLibresActivo = false;
+        let sistemaActivo = false;
         let estaHablandoDimas = false;
 
+        // Motor de voz sintética limpio y sincronizado
         function hablarDimas(texto, callback) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 estaHablandoDimas = true;
                 
-                // Apagamos el micro mientras Dimas habla para evitar que se escuche a sí mismo
+                // Apagamos el micro para que Dimas no se escuche a sí mismo
                 if (reconocimiento) {
                     try { reconocimiento.stop(); } catch(e) {}
                 }
@@ -167,6 +165,7 @@
             };
         }
 
+        // Configuración estricta del reconocimiento de voz
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             reconocimiento = new SpeechRecognition();
@@ -180,69 +179,69 @@
                 let textoEscuchado = event.results[0][0].transcript.trim().toLowerCase();
                 document.getElementById("userInput").value = textoEscuchado;
 
-                // Ejecutamos la orden de inmediato
+                // Procesamos la orden hablada
                 ejecutarComando(textoEscuchado);
             };
 
             reconocimiento.onerror = function(event) {
-                // Si da error por silencio, reiniciamos el ciclo si el manos libres sigue activo
-                if (manosLibresActivo && !estaHablandoDimas) {
-                    setTimeout(reiniciarEscucha, 600);
+                if (sistemaActivo && !estaHablandoDimas) {
+                    setTimeout(reiniciarEscucha, 800);
                 }
             };
 
             reconocimiento.onend = function() {
-                // Al terminar de capturar una frase, si no está hablando Dimas, reabre el micro en automático
-                if (manosLibresActivo && !estaHablandoDimas) {
-                    setTimeout(reiniciarEscucha, 400);
+                // Al terminar de capturar, si el sistema sigue activo, reabre el micro en automático
+                if (sistemaActivo && !estaHablandoDimas) {
+                    setTimeout(reiniciarEscucha, 500);
                 }
             };
         }
 
-        function alternarManosLibres() {
+        function alternarSistemaVoz() {
             if (!reconocimiento) {
-                alert("Tu navegador no soporta el reconocimiento de voz por micrófono, viejo.");
+                alert("Tu navegador no soporta el reconocimiento de voz, viejo.");
                 return;
             }
 
-            const btn = document.getElementById("mlBtn");
+            const btn = document.getElementById("mainBtn");
             const badge = document.getElementById("status-badge");
 
-            if (!manosLibresActivo) {
-                manosLibresActivo = true;
+            if (!sistemaActivo) {
+                sistemaActivo = true;
                 btn.classList.add("activo");
-                btn.innerText = "🛑 Detener Manos Libres";
+                btn.innerText = "🛑 Detener Conversación";
                 badge.className = "status-badge badge-activo";
-                badge.innerText = "Manos Libres Activo (Escuchando...)";
-                document.getElementById("status-text").innerText = "Te escucho, compadre. Habla con confianza.";
+                badge.innerText = "Conversación Activa";
+                document.getElementById("status-text").innerText = "Te escucho. Pide tu alarma o temporizador.";
                 
-                hablarDimas("¡Fierro! Manos libres activado. Dime en qué te ayudo.", () => {
+                hablarDimas("¡Fierro! Conversación iniciada. ¿Qué se ofrece, compadre?", () => {
                     reiniciarEscucha();
                 });
             } else {
-                manosLibresActivo = false;
+                sistemaActivo = false;
                 try { reconocimiento.stop(); } catch(e) {}
                 btn.classList.remove("activo");
-                btn.innerText = "🎙️ Iniciar Manos Libres";
+                btn.innerText = "🎙️ Iniciar Conversación";
                 badge.className = "status-badge badge-inactivo";
-                badge.innerText = "Manos Libres Apagado";
-                document.getElementById("status-text").innerText = "Pícale al botón para iniciar la conversación continua.";
+                badge.innerText = "Sistema en Pausa";
+                document.getElementById("status-text").innerText = "Inicia el sistema para platicar con Dimas.";
             }
         }
 
         function reiniciarEscucha() {
-            if (manosLibresActivo && !estaHablandoDimas) {
+            if (sistemaActivo && !estaHablandoDimas) {
                 try {
                     reconocimiento.abort();
                     setTimeout(() => {
-                        if (manosLibresActivo && !estaHablandoDimas) {
+                        if (sistemaActivo && !estaHablandoDimas) {
                             reconocimiento.start();
                         }
-                    }, 200);
+                    }, 300);
                 } catch(e) {}
             }
         }
 
+        // Tono de alerta (Beep) para el temporizador
         function hacerBiip() {
             try {
                 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -258,11 +257,12 @@
             } catch(e) {}
         }
 
+        // Traductor de números escritos a dígitos
         function convertirNumeroEscrito(texto) {
             const mapaNumeros = {
                 'un': 1, 'uno': 1, 'una': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 
                 'cinco': 5, 'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10,
-                'quince': 15, 'veinte': 20, 'treinta': 30
+                'quince': 15, 'veinte': 20, 'treinta': 30, 'cuarenta': 40, 'cincuenta': 50
             };
             let limpio = texto;
             for (let palabra in mapaNumeros) {
@@ -272,6 +272,7 @@
             return limpio;
         }
 
+        // Procesador central de órdenes (Enfocado 100% en Tiempos y Conversación)
         function ejecutarComando(texto) {
             const responseBox = document.getElementById("response-box");
             let respuesta = "";
@@ -279,13 +280,13 @@
             let comandoLimpio = texto.replace("dimas", "").replace("dimás", "").trim();
             comandoLimpio = convertirNumeroEscrito(comandoLimpio);
 
-            // 1. CRONÓMETRO / TEMPORIZADOR
+            // 1. GESTIÓN DE CRONÓMETRO / TEMPORIZADOR POR VOZ
             if (comandoLimpio.includes("cronómetro") || comandoLimpio.includes("temporizador") || comandoLimpio.includes("cuenta regresiva")) {
                 
                 let matchMin = comandoLimpio.match(/(\d+(?:\.\d+)?)\s*(minuto|minutos|min)/);
                 let matchSeg = comandoLimpio.match(/(\d+)\s*(segundo|segundos|seg)/);
                 
-                let milisegundos = 60 * 1000; 
+                let milisegundos = 60 * 1000; // Por defecto 1 minuto si no especifica
                 let textoTiempo = "1 minuto";
 
                 if (matchMin) {
@@ -298,13 +299,14 @@
                     textoTiempo = `${segs} segundo${segs > 1 ? 's' : ''}`;
                 }
 
-                respuesta = `¡Fierro! Cronómetro puesto de ${textoTiempo}. Yo te aviso cuando caiga el tiempo, viejo.`;
+                respuesta = `¡Fierro! Cronómetro puesto de ${textoTiempo}. Yo te aviso cuando se cumpla, viejo.`;
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
                 
                 hablarDimas(respuesta, () => {
-                    reiniciarEscucha(); // Vuelve a abrir el micro en automático al terminar de hablar
+                    reiniciarEscucha();
                 });
 
+                // Ejecución interna del tiempo
                 setTimeout(() => {
                     hacerBiip();
                     hablarDimas(`¡Tiempo cumplido, compadre! Se acabó el cronómetro de ${textoTiempo}. ¡Despierta!`, () => {
@@ -315,9 +317,9 @@
 
                 return;
             } 
-            // 2. ALARMA
+            // 2. GESTIÓN DE ALARMAS
             else if (comandoLimpio.includes("alarma") || comandoLimpio.includes("despertador")) {
-                respuesta = "¡Arre pues! Abriendo el reloj para programar tu alarma, viejo.";
+                respuesta = "¡Arre pues! Abriendo la aplicación de reloj para programar tu alarma, viejo.";
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
                 hablarDimas(respuesta, () => {
                     setTimeout(() => {
@@ -331,46 +333,20 @@
                 });
                 return;
             } 
-            // 3. MÚSICA / ROLITA
-            else if (comandoLimpio.includes("reproducir") || comandoLimpio.includes("música") || comandoLimpio.includes("canción") || comandoLimpio.includes("cancion") || comandoLimpio.includes("rola") || comandoLimpio.includes("rolita") || comandoLimpio.includes("pon")) {
-                
-                let busqueda = comandoLimpio
-                    .replace("reproducir", "")
-                    .replace("música", "")
-                    .replace("canción", "")
-                    .replace("cancion", "")
-                    .replace("rola", "")
-                    .replace("rolita", "")
-                    .replace("video", "")
-                    .replace("ver", "")
-                    .replace("pon", "")
-                    .trim();
-
-                if (busqueda) {
-                    respuesta = `¡Fierro! Buscando '${busqueda}' para pasarlo a SnapTube, viejo.`;
-                    responseBox.innerText = `Dimas dice: ${respuesta}`;
-                    hablarDimas(respuesta, () => {
-                        setTimeout(() => {
-                            let query = encodeURIComponent(busqueda);
-                            window.location.href = `https://www.youtube.com/results?search_query=${query}`;
-                        }, 500);
-                    });
-                    return;
-                } else {
-                    respuesta = "¿Qué rolita quieres que ponga o qué? Dímela bien, viejo.";
-                }
-            } 
+            // 3. CONVERSACIÓN GENERAL Y SALUDOS
             else if (comandoLimpio.includes("hola") || comandoLimpio.includes("que onda")) {
-                respuesta = "¡Qué onda, compadre! ¿Qué vamos a hacer o qué?";
+                respuesta = "¡Qué onda, compadre! ¿Qué programamos o qué?";
             } else if (comandoLimpio.includes("nombre")) {
-                respuesta = "Yo soy Dimas, tu asistente personal al tiro.";
+                respuesta = "Yo soy Dimas, tu asistente personal de tiempos y alarmas.";
+            } else if (comandoLimpio.includes("gracias")) {
+                respuesta = "Para eso estamos, viejo. ¿Qué más se ofrece?";
             } else {
-                respuesta = `Recibí tu orden, viejo: '${texto}'. A darle recio.`;
+                respuesta = `Recibí tu orden, viejo: '${texto}'. Pregúntame por una alarma o cronómetro.`;
             }
 
             responseBox.innerText = `Dimas dice: ${respuesta}`;
             hablarDimas(respuesta, () => {
-                reiniciarEscucha(); // Reactiva el micrófono al terminar de hablar para la siguiente pregunta
+                reiniciarEscucha();
             });
         }
 

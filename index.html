@@ -102,47 +102,45 @@
             align-items: center;
             justify-content: center;
         }
-        #audio-container {
-            margin-top: 15px;
-            width: 100%;
-            display: none;
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
         }
-        audio {
-            width: 100%;
-            border-radius: 8px;
-        }
+        .badge-descanso { background-color: #333; color: #aaa; }
+        .badge-activo { background-color: #00897b; color: #fff; animation: latido 1.5s infinite; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <h2>🤠 Dimas</h2>
-        <p id="status-text">Listo al tiro, compadre.</p>
+        <div id="status-badge" class="status-badge badge-descanso">Modo Descanso (Inactivo)</div>
+        <p id="status-text">Pícale al botón para activar la escucha de "Dimas".</p>
 
         <input type="text" id="userInput" placeholder="Escribe tu orden o háblale..." />
         
         <button onclick="procesarTextoInput()">Enviar comando 🚀</button>
-        <button id="micBtn" class="btn-mic" onclick="alternarEscucha()">🎤 Escuchar voz (Manos libres)</button>
+        <button id="micBtn" class="btn-mic" onclick="alternarModoEscucha()">🔴 Activar Manos Libres (Escucha "Dimas")</button>
 
         <div class="btn-grupo">
             <button onclick="ejecutarComando('pon una alarma a las 7 de la mañana')">⏰ Alarma</button>
-            <button onclick="ejecutarComando('pon musica norteña')">🎵 Música</button>
+            <button onclick="ejecutarComando('pon la rolita de cadetes de linares')">🎵 Rolita</button>
         </div>
 
-        <div id="response-box">Aquí ando al pendiente, viejo. Pruebe a hablarme.</div>
-        
-        <!-- Reproductor de audio limpio en streaming (Cero videos, cero bloqueos de YouTube) -->
-        <div id="audio-container">
-            <audio id="audioPlayer" controls autoplay></audio>
-        </div>
+        <div id="response-box">Aquí ando al pendiente, viejo.</div>
     </div>
 
     <script>
         let vozActual = null;
         let reconocimiento = null;
-        let escuchando = false;
+        let modoManosLibres = false;
+        let esperandoOrden = false;
 
-        function hablarDimas(texto) {
+        function hablarDimas(texto, callback) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 vozActual = new SpeechSynthesisUtterance(texto);
@@ -156,7 +154,14 @@
                 vozActual.lang = 'es-MX'; 
                 vozActual.rate = 1.05; 
                 vozActual.pitch = 0.95; 
+
+                if (callback) {
+                    vozActual.onend = callback;
+                }
+
                 window.speechSynthesis.speak(vozActual);
+            } else if (callback) {
+                callback();
             }
         }
 
@@ -174,68 +179,101 @@
             reconocimiento.interimResults = false;
 
             reconocimiento.onresult = function(event) {
-                let textoEscuchado = event.results[0][0].transcript.trim();
+                let textoEscuchado = event.results[0][0].transcript.trim().toLowerCase();
                 document.getElementById("userInput").value = textoEscuchado;
-                detenerEscuchaUI();
-                ejecutarComando(textoEscuchado);
+
+                if (!esperandoOrden) {
+                    // Modo descanso: Buscando la palabra clave "dimas" o "dimás"
+                    if (textoEscuchado.includes("dimas") || textoEscuchado.includes("dimás")) {
+                        esperandoOrden = true;
+                        actualizarUIActivo("¡Mande, compadre! ¿Qué se ofrece?");
+                        hablarDimas("¿Qué pasó, compadre?", () => {
+                            // Una vez que termina de hablar, abre el micro de inmediato para recibir la orden real
+                            reiniciarReconocimiento();
+                        });
+                    } else {
+                        reiniciarReconocimiento();
+                    }
+                } else {
+                    // Modo activo: Ya escuchó el nombre, esta frase es la orden directa
+                    esperandoOrden = false;
+                    actualizarUIDescanso();
+                    ejecutarComando(textoEscuchado);
+                }
             };
 
             reconocimiento.onerror = function(event) {
-                detenerEscuchaUI();
+                if (modoManosLibres) {
+                    setTimeout(reiniciarReconocimiento, 1000);
+                }
             };
 
             reconocimiento.onend = function() {
-                detenerEscuchaUI();
+                if (modoManosLibres && !esperandoOrden) {
+                    setTimeout(reiniciarReconocimiento, 500);
+                }
             };
         }
 
-        function alternarEscucha() {
+        function alternarModoEscucha() {
             if (!reconocimiento) {
                 alert("Tu navegador no soporta el reconocimiento de voz por micrófono, viejo.");
                 return;
             }
 
             const btn = document.getElementById("micBtn");
-            if (!escuchando) {
+            if (!modoManosLibres) {
+                modoManosLibres = true;
+                esperandoOrden = false;
+                btn.classList.add("escuchando");
+                btn.innerText = "🛑 Desactivar Manos Libres";
+                actualizarUIDescanso();
                 try {
-                    escuchando = true;
                     reconocimiento.start();
-                    btn.classList.add("escuchando");
-                    btn.innerText = "🛑 Escuchando... (Hable ahora)";
-                    document.getElementById("status-text").innerText = "Te escucho, compadre...";
-                } catch(e) {
-                    escuchando = false;
-                    detenerEscuchaUI();
-                }
+                } catch(e) {}
             } else {
+                modoManosLibres = false;
+                esperandoOrden = false;
                 try {
                     reconocimiento.stop();
                 } catch(e) {}
-                detenerEscuchaUI();
+                btn.classList.remove("escuchando");
+                btn.innerText = "🔴 Activar Manos Libres (Escucha 'Dimas')";
+                document.getElementById("status-text").innerText = "Manos libres apagado.";
+                let badge = document.getElementById("status-badge");
+                badge.className = "status-badge badge-descanso";
+                badge.innerText = "Modo Descanso (Inactivo)";
             }
         }
 
-        function detenerEscuchaUI() {
-            escuchando = false;
-            const btn = document.getElementById("micBtn");
-            if (btn) {
-                btn.classList.remove("escuchando");
-                btn.innerText = "🎤 Escuchar voz (Manos libres)";
+        function reiniciarReconocimiento() {
+            if (modoManosLibres) {
+                try {
+                    reconocimiento.start();
+                } catch(e) {}
             }
-            const status = document.getElementById("status-text");
-            if (status) {
-                status.innerText = "Listo al tiro, compadre.";
-            }
+        }
+
+        function actualizarUIDescanso() {
+            let badge = document.getElementById("status-badge");
+            badge.className = "status-badge badge-descanso";
+            badge.innerText = "Modo Descanso (Esperando 'Dimas'...)";
+            document.getElementById("status-text").innerText = "Di 'Dimas' para despertarme.";
+        }
+
+        function actualizarUIActivo(mensaje) {
+            let badge = document.getElementById("status-badge");
+            badge.className = "status-badge badge-activo";
+            badge.innerText = "¡Modo Activo!";
+            document.getElementById("status-text").innerText = mensaje;
+            document.getElementById("response-box").innerText = `Dimas dice: ${mensaje}`;
         }
 
         function ejecutarComando(texto) {
-            const textoLower = texto.toLowerCase();
             const responseBox = document.getElementById("response-box");
-            const audioContainer = document.getElementById("audio-container");
-            const audioPlayer = document.getElementById("audioPlayer");
             let respuesta = "";
 
-            let comandoLimpio = textoLower.replace("dimas", "").replace("dimás", "").trim();
+            let comandoLimpio = texto.replace("dimas", "").replace("dimás", "").trim();
 
             if (comandoLimpio.includes("reproducir") || comandoLimpio.includes("música") || comandoLimpio.includes("canción") || comandoLimpio.includes("cancion") || comandoLimpio.includes("rola") || comandoLimpio.includes("rolita") || comandoLimpio.includes("pon")) {
                 
@@ -251,61 +289,64 @@
                     .replace("pon", "")
                     .trim();
 
-                respuesta = `¡Fierro! Poniendo música en streaming puro, viejo.`;
+                if (busqueda) {
+                    respuesta = `¡Fierro! Buscando '${busqueda}' para pasarlo a SnapTube, viejo.`;
+                    responseBox.innerText = `Dimas dice: ${respuesta}`;
+                    hablarDimas(respuesta, () => {
+                        setTimeout(() => {
+                            let query = encodeURIComponent(busqueda);
+                            window.location.href = `https://www.youtube.com/results?search_query=${query}`;
+                        }, 500);
+                    });
+                    return;
+                } else {
+                    respuesta = "¿Qué rolita quieres que ponga o qué? Dímela bien, viejo.";
+                }
+            } 
+            else if (comandoLimpio.includes("alarma") || comandoLimpio.includes("despertador")) {
+                respuesta = "¡Arre pues! Abriendo el reloj para programar tu alarma, viejo.";
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
-                hablarDimas(respuesta);
-
-                // Usamos un flujo de audio libre directo (Radio o streaming de prueba compatible con HTML5)
-                // Esto evita por completo los bloqueos de YouTube y los saltos a apps externas
-                audioContainer.style.display = "block";
-                
-                // Enlace de streaming de audio estable (ej. stream de radio norteña / música libre)
-                audioPlayer.src = "https://icecast.usrspectrum.com/stream/nortena"; // O un stream de prueba universal
-                audioPlayer.play().catch(e => {
-                    console.log("Reproducción automática requiere interacción.");
+                hablarDimas(respuesta, () => {
+                    setTimeout(() => {
+                        if (/Android/i.test(navigator.userAgent)) {
+                            window.location.href = "intent://#Intent;action=android.intent.action.SET_ALARM;end;";
+                        } else {
+                            window.open("https://calendar.google.com", "_blank");
+                        }
+                        reiniciarReconocimiento();
+                    }, 500);
                 });
                 return;
             } 
-            else if (comandoLimpio.includes("alarma") || comandoLimpio.includes("despertador")) {
-                audioContainer.style.display = "none";
-                respuesta = "¡Arre pues! Abriendo la aplicación de reloj para programar tu alarma, viejo.";
-                responseBox.innerText = `Dimas dice: ${respuesta}`;
-                hablarDimas(respuesta);
-
-                setTimeout(() => {
-                    if (/Android/i.test(navigator.userAgent)) {
-                        window.location.href = "intent://#Intent;action=android.intent.action.SET_ALARM;end;";
-                    } else {
-                        window.open("https://calendar.google.com", "_blank");
-                    }
-                }, 1200);
-                return;
-            } 
             else if (comandoLimpio.includes("cronómetro") || comandoLimpio.includes("temporizador")) {
-                audioContainer.style.display = "none";
                 respuesta = "¡Fierro! Abriendo el cronómetro en chiza, viejo.";
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
-                hablarDimas(respuesta);
-
-                setTimeout(() => {
-                    if (/Android/i.test(navigator.userAgent)) {
-                        window.location.href = "intent://#Intent;action=android.intent.action.SET_TIMER;end;";
-                    } else {
-                        alert("Cronómetro solicitado, compadre.");
-                    }
-                }, 1200);
+                hablarDimas(respuesta, () => {
+                    setTimeout(() => {
+                        if (/Android/i.test(navigator.userAgent)) {
+                            window.location.href = "intent://#Intent;action=android.intent.action.SET_TIMER;end;";
+                        } else {
+                            alert("Cronómetro solicitado, compadre.");
+                        }
+                        reiniciarReconocimiento();
+                    }, 500);
+                });
                 return;
             }
             else if (comandoLimpio.includes("hola") || comandoLimpio.includes("que onda")) {
-                respuesta = "¡Qué onda, compadre! ¿Qué vamos a hacer o qué? Aquí ando al pendiente.";
+                respuesta = "¡Qué onda, compadre! ¿Qué vamos a hacer o qué?";
             } else if (comandoLimpio.includes("nombre")) {
                 respuesta = "Yo soy Dimas, tu asistente personal al tiro.";
             } else {
-                respuesta = `Recibí tu orden, viejo: '${texto}'. A darle recio con eso.`;
+                respuesta = `Recibí tu orden, viejo: '${texto}'. A darle recio.`;
             }
 
             responseBox.innerText = `Dimas dice: ${respuesta}`;
-            hablarDimas(respuesta);
+            hablarDimas(respuesta, () => {
+                // Al terminar de hablar, regresa a modo descanso escuchando la palabra clave
+                actualizarUIDescanso();
+                reiniciarReconocimiento();
+            });
         }
 
         function procesarTextoInput() {

@@ -102,6 +102,24 @@
             align-items: center;
             justify-content: center;
         }
+        #player-container {
+            margin-top: 15px;
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+        }
+        iframe {
+            width: 100%;
+            height: 180px;
+            border: none;
+            border-radius: 8px;
+        }
+        /* Si es modo audio, ocultamos visualmente el reproductor pero dejamos que suene el audio */
+        .modo-audio {
+            height: 0px !important;
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -117,10 +135,15 @@
 
         <div class="btn-grupo">
             <button onclick="ejecutarComando('hola')">👋 Saludar</button>
-            <button onclick="ejecutarComando('reproducir cadetes de linares')">🎵 Música</button>
+            <button onclick="ejecutarComando('pon la rolita de cadetes de linares')">🎵 Música</button>
         </div>
 
         <div id="response-box">Aquí ando al pendiente, viejo.</div>
+        
+        <!-- Contenedor inteligente para audio o video -->
+        <div id="player-container">
+            <iframe id="youtube-frame" src="" allow="autoplay"></iframe>
+        </div>
     </div>
 
     <script>
@@ -142,7 +165,7 @@
 
                 vozActual.lang = 'es-MX'; 
                 vozActual.rate = 1.0;     
-                vozActual.pitch = 0.85; // Tono natural de hombre normal, sin sustos
+                vozActual.pitch = 0.85; // Tono natural de hombre normal
                 window.speechSynthesis.speak(vozActual);
             }
         }
@@ -206,36 +229,68 @@
             }
         }
 
-        function ejecutarComando(texto) {
+        async function ejecutarComando(texto) {
             const textoLower = texto.toLowerCase();
             const responseBox = document.getElementById("response-box");
+            const playerContainer = document.getElementById("player-container");
+            const iframe = document.getElementById("youtube-frame");
             let respuesta = "";
 
             historialChat.push({ de: 'usuario', texto: texto });
 
-            if (textoLower.includes("reproducir") || textoLower.includes("música") || textoLower.includes("canción") || textoLower.includes("rola") || textoLower.includes("pon")) {
+            if (textoLower.includes("reproducir") || textoLower.includes("música") || textoLower.includes("canción") || textoLower.includes("rola") || textoLower.includes("rolita") || textoLower.includes("pon")) {
+                
+                // Detectar si el usuario pidió específicamente el "video"
+                let esVideo = textoLower.includes("video") || textoLower.includes("ver") || textoLower.includes("videoclip");
+
                 let busqueda = textoLower
                     .replace("reproducir", "")
                     .replace("música", "")
                     .replace("canción", "")
+                    .replace("cancion", "")
                     .replace("rola", "")
+                    .replace("rolita", "")
+                    .replace("video", "")
+                    .replace("ver", "")
                     .replace("pon", "")
                     .trim();
 
                 if (busqueda) {
-                    respuesta = `¡Arre pues! Abriendo '${busqueda}' en la app de YouTube, viejo.`;
+                    if (esVideo) {
+                        respuesta = `¡Arre! Poniendo el video de '${busqueda}' en la app, viejo.`;
+                        iframe.classList.remove("modo-audio");
+                    } else {
+                        respuesta = `¡Fierro! Poniendo solo el sonidito de '${busqueda}', viejo.`;
+                        iframe.classList.add("modo-audio"); // Oculta el video y deja sonar el audio limpio
+                    }
                     
                     responseBox.innerText = `Dimas dice: ${respuesta}`;
                     hablarDimas(respuesta);
 
-                    setTimeout(() => {
-                        let query = encodeURIComponent(busqueda);
-                        if (/Android/i.test(navigator.userAgent)) {
-                            window.location.href = `intent://www.youtube.com/results?search_query=${query}#Intent;package=com.google.android.youtube;scheme=https;end;`;
+                    playerContainer.style.display = "block";
+
+                    try {
+                        // Buscar de forma limpia el ID del primer video usando una API pública abierta
+                        let apiRes = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(busqueda)}`);
+                        let data = await apiRes.json();
+                        
+                        if (data && data.items && data.items.length > 0) {
+                            // Buscar el primer resultado que sea un video
+                            let videoItem = data.items.find(item => item.type === 'video') || data.items[0];
+                            let videoId = videoItem.videoId;
+                            
+                            // Cargar el reproductor directamente incrustado con autoplay
+                            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
                         } else {
-                            window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
+                            // Plan B si la API de búsqueda se pone pesada
+                            iframe.classList.remove("modo-audio");
+                            iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(busqueda)}&autoplay=1`;
                         }
-                    }, 1200);
+                    } catch (e) {
+                        // Si falla el internet o la API, abrir respaldo directo
+                        iframe.classList.remove("modo-audio");
+                        iframe.src = `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(busqueda)}&autoplay=1`;
+                    }
                     return;
                 } else {
                     respuesta = "¿Qué rola quieres que ponga o qué? Dímela bien, viejo.";

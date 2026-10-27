@@ -109,22 +109,22 @@
 
     <div class="card">
         <h2>🤠 Dimas</h2>
-        <div id="status-badge" class="status-badge badge-descanso">Modo Descanso (Inactivo)</div>
-        <p id="status-text">Pícale al botón para activar la escucha de "Dimas".</p>
+        <div id="status-badge" class="status-badge badge-descanso">Listo al tiro</div>
+        <p id="status-text">Pícale al botón para hablar directo o activa el manos libres.</p>
 
         <input type="text" id="userInput" placeholder="Escribe tu orden o háblale..." />
         
         <button onclick="procesarTextoInput()">Enviar comando 🚀</button>
-        <button id="micBtn" class="btn-mic" onclick="alternarModoEscucha()">🔴 Activar Manos Libres (Escucha "Dimas")</button>
+        <button id="micBtn" class="btn-mic" onclick="hablarDirecto()">🎤 Toca y habla (Directo)</button>
+        <button id="manosLibresBtn" style="background-color: #333; font-size: 14px; margin-top: 5px;" onclick="alternarManosLibres()">🔴 Activar Manos Libres ("Dimas")</button>
 
-        <div id="response-box">Aquí ando al pendiente, viejo. Pruebe a hablarme.</div>
+        <div id="response-box">Aquí ando al pendiente, viejo.</div>
     </div>
 
     <script>
         let vozActual = null;
         let reconocimiento = null;
         let modoManosLibres = false;
-        let esperandoOrden = false;
         let estaHablandoDimas = false;
 
         function hablarDimas(texto, callback) {
@@ -132,8 +132,7 @@
                 window.speechSynthesis.cancel();
                 estaHablandoDimas = true;
                 
-                // Asegurar que el micro esté cerrado mientras Dimas habla para evitar ecos o bloqueos
-                if (reconocimiento && modoManosLibres) {
+                if (reconocimiento) {
                     try { reconocimiento.stop(); } catch(e) {}
                 }
 
@@ -170,112 +169,126 @@
             };
         }
 
+        // Crear una sola instancia limpia de reconocimiento
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             reconocimiento = new SpeechRecognition();
             reconocimiento.lang = 'es-MX';
             reconocimiento.continuous = false;
-            reconocimiento.interimResults = true; // Permite capturar flujo de voz con mayor estabilidad
+            reconocimiento.interimResults = false;
 
             reconocimiento.onresult = function(event) {
-                if (estaHablandoDimas) return; // Ignorar si Dimas está hablando
+                if (estaHablandoDimas) return;
 
-                let textoEscuchado = "";
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        textoEscuchado += event.results[i][0].transcript;
-                    }
-                }
-                
-                textoEscuchado = textoEscuchado.trim().toLowerCase();
-                if (!textoEscuchado) return;
-
+                let textoEscuchado = event.results[0][0].transcript.trim().toLowerCase();
                 document.getElementById("userInput").value = textoEscuchado;
 
-                if (!esperandoOrden) {
+                restaurarBotonesUI();
+
+                if (modoManosLibres) {
+                    // Si está activo el manos libres, evaluamos si dijo "Dimas"
                     if (textoEscuchado.includes("dimas") || textoEscuchado.includes("dimás")) {
-                        esperandoOrden = true;
-                        actualizarUIActivo("¡Mande, compadre! ¿Qué se ofrece?");
-                        hablarDimas("¿Qué pasó, compadre?", () => {
-                            reiniciarReconocimiento();
-                        });
+                        let ordenReal = textoEscuchado.replace("dimas", "").replace("dimás", "").trim();
+                        if (ordenReal.length > 0) {
+                            ejecutarComando(ordenReal);
+                        } else {
+                            hablarDimas("¿Qué pasó, compadre?", () => {
+                                reiniciarManosLibres();
+                            });
+                        }
                     } else {
-                        reiniciarReconocimiento();
+                        reiniciarManosLibres();
                     }
                 } else {
-                    esperandoOrden = false;
-                    actualizarUIDescanso();
+                    // Si fue toque directo al botón, ejecutamos la orden al putazo
                     ejecutarComando(textoEscuchado);
                 }
             };
 
             reconocimiento.onerror = function(event) {
-                // Si ocurre error por silencio o interrupción, reintentar de inmediato sin trabarse
-                if (modoManosLibres && !estaHablandoDimas) {
-                    setTimeout(reiniciarReconocimiento, 800);
+                restaurarBotonesUI();
+                if (modoManosLibres) {
+                    setTimeout(reiniciarManosLibres, 1000);
                 }
             };
 
             reconocimiento.onend = function() {
-                if (modoManosLibres && !esperandoOrden && !estaHablandoDimas) {
-                    setTimeout(reiniciarReconocimiento, 400);
+                restaurarBotonesUI();
+                if (modoManosLibres) {
+                    setTimeout(reiniciarManosLibres, 500);
                 }
             };
         }
 
-        function alternarModoEscucha() {
+        // Botón de Toca y Habla Directo (Sin depender de decir "Dimas")
+        function hablarDirecto() {
             if (!reconocimiento) {
-                alert("Tu navegador no soporta el reconocimiento de voz por micrófono, viejo.");
+                alert("Tu navegador no soporta el reconocimiento de voz, viejo.");
+                return;
+            }
+            if (estaHablandoDimas) return;
+
+            modoManosLibres = false; // Apagamos manos libres para evitar conflictos
+            const btn = document.getElementById("micBtn");
+            btn.classList.add("escuchando");
+            btn.innerText = "🛑 Escuchando... (Hable ahora)";
+            document.getElementById("status-text").innerText = "Te escucho, di tu orden...";
+
+            try {
+                reconocimiento.abort(); // Forzar reinicio limpio
+                reconocimiento.start();
+            } catch(e) {
+                restaurarBotonesUI();
+            }
+        }
+
+        // Botón independiente para el modo Manos Libres ("Dimas")
+        function alternarManosLibres() {
+            if (!reconocimiento) {
+                alert("Tu navegador no soporta el reconocimiento de voz, viejo.");
                 return;
             }
 
-            const btn = document.getElementById("micBtn");
+            const btnML = document.getElementById("manosLibresBtn");
             if (!modoManosLibres) {
                 modoManosLibres = true;
-                esperandoOrden = false;
-                btn.classList.add("escuchando");
-                btn.innerText = "🛑 Desactivar Manos Libres";
-                actualizarUIDescanso();
-                reiniciarReconocimiento();
+                btnML.style.backgroundColor = "#00897b";
+                btnML.innerText = "🛑 Desactivar Manos Libres";
+                document.getElementById("status-badge").className = "status-badge badge-activo";
+                document.getElementById("status-badge").innerText = "Modo Manos Libres Activo";
+                document.getElementById("status-text").innerText = "Di 'Dimas' seguido de tu orden.";
+                reiniciarManosLibres();
             } else {
                 modoManosLibres = false;
-                esperandoOrden = false;
                 try { reconocimiento.stop(); } catch(e) {}
-                btn.classList.remove("escuchando");
-                btn.innerText = "🔴 Activar Manos Libres (Escucha 'Dimas')";
-                document.getElementById("status-text").innerText = "Manos libres apagado.";
-                let badge = document.getElementById("status-badge");
-                badge.className = "status-badge badge-descanso";
-                badge.innerText = "Modo Descanso (Inactivo)";
+                btnML.style.backgroundColor = "#333";
+                btnML.innerText = "🔴 Activar Manos Libres ('Dimas')";
+                document.getElementById("status-badge").className = "status-badge badge-descanso";
+                document.getElementById("status-badge").innerText = "Listo al tiro";
+                document.getElementById("status-text").innerText = "Pícale al botón para hablar directo.";
             }
         }
 
-        function reiniciarReconocimiento() {
+        function reiniciarManosLibres() {
             if (modoManosLibres && !estaHablandoDimas) {
                 try {
-                    reconocimiento.stop(); // Limpiar instancia previa
+                    reconocimiento.abort();
+                    setTimeout(() => {
+                        if (modoManosLibres && !estaHablandoDimas) {
+                            reconocimiento.start();
+                        }
+                    }, 300);
                 } catch(e) {}
-                setTimeout(() => {
-                    if (modoManosLibres && !estaHablandoDimas) {
-                        try { reconocimiento.start(); } catch(e) {}
-                    }
-                }, 200);
             }
         }
 
-        function actualizarUIDescanso() {
-            let badge = document.getElementById("status-badge");
-            badge.className = "status-badge badge-descanso";
-            badge.innerText = "Modo Descanso (Esperando 'Dimas'...)";
-            document.getElementById("status-text").innerText = "Di 'Dimas' para despertarme.";
-        }
-
-        function actualizarUIActivo(mensaje) {
-            let badge = document.getElementById("status-badge");
-            badge.className = "status-badge badge-activo";
-            badge.innerText = "¡Modo Activo!";
-            document.getElementById("status-text").innerText = mensaje;
-            document.getElementById("response-box").innerText = `Dimas dice: ${mensaje}`;
+        function restaurarBotonesUI() {
+            const btn = document.getElementById("micBtn");
+            btn.classList.remove("escuchando");
+            btn.innerText = "🎤 Toca y habla (Directo)";
+            if (!modoManosLibres) {
+                document.getElementById("status-text").innerText = "Pícale al botón para hablar directo o activa el manos libres.";
+            }
         }
 
         function hacerBiip() {
@@ -294,11 +307,10 @@
         }
 
         function convertirNumeroEscrito(texto) {
-            // Convierte números escritos con letra comunes en dígitos para asegurar el cálculo
             const mapaNumeros = {
                 'un': 1, 'uno': 1, 'una': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 
                 'cinco': 5, 'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10,
-                'quince': 15, 'veinte': 20, ' treinta': 30, 'media': 0.5
+                'quince': 15, 'veinte': 20, 'treinta': 30
             };
             let limpio = texto;
             for (let palabra in mapaNumeros) {
@@ -334,11 +346,11 @@
                     textoTiempo = `${segs} segundo${segs > 1 ? 's' : ''}`;
                 }
 
-                respuesta = `¡Fierro! Cronómetro puesto de ${textoTiempo}. Yo te avisan cuando caiga el tiempo, viejo.`;
+                respuesta = `¡Fierro! Cronómetro puesto de ${textoTiempo}. Yo te aviso cuando caiga el tiempo, viejo.`;
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
                 
                 hablarDimas(respuesta, () => {
-                    reiniciarReconocimiento();
+                    if (modoManosLibres) reiniciarManosLibres();
                 });
 
                 setTimeout(() => {
@@ -349,7 +361,7 @@
 
                 return;
             } 
-            // 2. ALARMA / DESPERTADOR
+            // 2. ALARMA
             else if (comandoLimpio.includes("alarma") || comandoLimpio.includes("despertador")) {
                 respuesta = "¡Arre pues! Abriendo el reloj para programar tu alarma, viejo.";
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
@@ -360,7 +372,7 @@
                         } else {
                             window.open("https://calendar.google.com", "_blank");
                         }
-                        reiniciarReconocimiento();
+                        if (modoManosLibres) reiniciarManosLibres();
                     }, 500);
                 });
                 return;
@@ -404,8 +416,7 @@
 
             responseBox.innerText = `Dimas dice: ${respuesta}`;
             hablarDimas(respuesta, () => {
-                actualizarUIDescanso();
-                reiniciarReconocimiento();
+                if (modoManosLibres) reiniciarManosLibres();
             });
         }
 

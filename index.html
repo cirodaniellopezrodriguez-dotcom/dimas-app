@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dimas - Conversación y Tiempos</title>
+    <title>Dimas - Conversación</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -28,15 +28,8 @@
             text-align: center;
             border: 1px solid #333;
         }
-        h2 {
-            margin-top: 0;
-            color: #ff5252;
-            font-size: 22px;
-        }
-        p {
-            font-size: 15px;
-            color: #b0b0b0;
-        }
+        h2 { margin-top: 0; color: #ff5252; font-size: 22px; }
+        p { font-size: 15px; color: #b0b0b0; }
         input[type="text"] {
             width: 100%;
             padding: 12px;
@@ -48,10 +41,7 @@
             font-size: 16px;
             box-sizing: border-box;
         }
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #ff5252;
-        }
+        input[type="text"]:focus { outline: none; border-color: #ff5252; }
         button {
             background-color: #00897b;
             color: white;
@@ -63,20 +53,9 @@
             font-weight: bold;
             cursor: pointer;
             width: 100%;
-            transition: background 0.2s;
         }
-        button:active {
-            background-color: #00695c;
-        }
-        button.activo {
-            background-color: #d32f2f;
-            animation: latido 1.5s infinite;
-        }
-        @keyframes latido {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.03); }
-            100% { transform: scale(1); }
-        }
+        button.activo { background-color: #d32f2f; animation: latido 1.5s infinite; }
+        @keyframes latido { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
         #response-box {
             margin-top: 15px;
             padding: 12px;
@@ -89,78 +68,40 @@
             align-items: center;
             justify-content: center;
         }
-        .status-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .badge-inactivo { background-color: #333; color: #aaa; }
-        .badge-activo { background-color: #00897b; color: #fff; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <h2>🤠 Dimas</h2>
-        <div id="status-badge" class="status-badge badge-inactivo">Sistema en Pausa</div>
-        <p id="status-text">Inicia la plática con Dimas.</p>
-
-        <input type="text" id="userInput" placeholder="Escribe algo o háblale..." />
-        
-        <button onclick="procesarTextoInput()">Enviar texto 🚀</button>
-        <button id="mainBtn" onclick="alternarSistemaVoz()">🎙️ Iniciar Plática</button>
-
+        <p id="status-text">Picale para iniciar la plática.</p>
+        <input type="text" id="userInput" placeholder="Escribe algo..." />
+        <button onclick="procesarTexto()">Enviar 🚀</button>
+        <button id="btnConversar" onclick="alternarConversacion()">🎙️ Iniciar Conversación</button>
         <div id="response-box">Aquí ando al pendiente, viejo.</div>
     </div>
 
     <script>
         let reconocimiento = null;
-        let sistemaActivo = false;
-        let estaHablandoDimas = false;
+        let conversando = false;
+        let hablandoDimas = false;
 
-        function hablarDimas(texto, callback) {
+        function hablar(texto, callback) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
-                estaHablandoDimas = true;
-                
-                if (reconocimiento) {
-                    try { reconocimiento.stop(); } catch(e) {}
-                }
+                hablandoDimas = true;
+                if (reconocimiento) { try { reconocimiento.stop(); } catch(e) {} }
 
                 let utterance = new SpeechSynthesisUtterance(texto);
-                let voces = window.speechSynthesis.getVoices();
-                let vozEspanol = voces.find(v => v.lang === 'es-MX' || v.lang.includes('es-US') || v.lang.includes('es-LA')) || voces.find(v => v.lang.includes('es'));
-                if (vozEspanol) {
-                    utterance.voice = vozEspanol;
-                }
+                utterance.lang = 'es-MX';
+                utterance.rate = 1.05;
+                utterance.pitch = 0.95;
 
-                utterance.lang = 'es-MX'; 
-                utterance.rate = 1.05; 
-                utterance.pitch = 0.95; 
-
-                utterance.onend = function() {
-                    estaHablandoDimas = false;
-                    if (callback) callback();
-                };
-
-                utterance.onerror = function() {
-                    estaHablandoDimas = false;
-                    if (callback) callback();
-                };
+                utterance.onend = () => { hablandoDimas = false; if (callback) callback(); };
+                utterance.onerror = () => { hablandoDimas = false; if (callback) callback(); };
 
                 window.speechSynthesis.speak(utterance);
-            } else if (callback) {
-                callback();
-            }
-        }
-
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.onvoiceschanged = function() {
-                window.speechSynthesis.getVoices();
-            };
+            } else if (callback) { callback(); }
         }
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -170,204 +111,85 @@
             reconocimiento.continuous = false;
             reconocimiento.interimResults = false;
 
-            reconocimiento.onresult = function(event) {
-                if (estaHablandoDimas) return;
-
-                let textoEscuchado = event.results[0][0].transcript.trim().toLowerCase();
-                document.getElementById("userInput").value = textoEscuchado;
-
-                ejecutarConversacion(textoEscuchado);
+            reconocimiento.onresult = (event) => {
+                if (hablandoDimas) return;
+                let texto = event.results[0][0].transcript.trim();
+                document.getElementById("userInput").value = texto;
+                responderPregunta(texto);
             };
 
-            reconocimiento.onerror = function(event) {
-                if (sistemaActivo && !estaHablandoDimas) {
-                    setTimeout(reiniciarEscucha, 800);
-                }
+            reconocimiento.onerror = () => {
+                if (conversando && !hablandoDimas) { setTimeout(reiniciarMicro, 800); }
             };
 
-            reconocimiento.onend = function() {
-                if (sistemaActivo && !estaHablandoDimas) {
-                    setTimeout(reiniciarEscucha, 500);
-                }
+            reconocimiento.onend = () => {
+                if (conversando && !hablandoDimas) { setTimeout(reiniciarMicro, 500); }
             };
         }
 
-        function alternarSistemaVoz() {
-            if (!reconocimiento) {
-                alert("Tu navegador no soporta el reconocimiento de voz, viejo.");
-                return;
-            }
+        function alternarConversacion() {
+            if (!reconocimiento) { alert("Tu navegador no soporta voz."); return; }
+            const btn = document.getElementById("btnConversar");
 
-            const btn = document.getElementById("mainBtn");
-            const badge = document.getElementById("status-badge");
-
-            if (!sistemaActivo) {
-                sistemaActivo = true;
+            if (!conversando) {
+                conversando = true;
                 btn.classList.add("activo");
-                btn.innerText = "🛑 Detener Plática";
-                badge.className = "status-badge badge-activo";
-                badge.innerText = "Plática Activa";
-                document.getElementById("status-text").innerText = "Te escucho. Dime lo que quieras, compadre.";
-                
-                hablarDimas("¡Qué onda, compadre! ¿De qué platicamos o qué se te ofrece?", () => {
-                    reiniciarEscucha();
-                });
+                btn.innerText = "🛑 Detener Conversación";
+                hablar("¡Qué onda, compadre! ¿De qué quieres que platiquemos o qué me quieres preguntar?", reiniciarMicro);
             } else {
-                sistemaActivo = false;
+                conversando = false;
                 try { reconocimiento.stop(); } catch(e) {}
                 btn.classList.remove("activo");
-                btn.innerText = "🎙️ Iniciar Plática";
-                badge.className = "status-badge badge-inactivo";
-                badge.innerText = "Sistema en Pausa";
-                document.getElementById("status-text").innerText = "Inicia la plática con Dimas.";
+                btn.innerText = "🎙️ Iniciar Conversación";
+                document.getElementById("status-text").innerText = "Plática pausada.";
             }
         }
 
-        function reiniciarEscucha() {
-            if (sistemaActivo && !estaHablandoDimas) {
-                try {
-                    reconocimiento.abort();
-                    setTimeout(() => {
-                        if (sistemaActivo && !estaHablandoDimas) {
-                            reconocimiento.start();
-                        }
-                    }, 300);
-                } catch(e) {}
+        function reiniciarMicro() {
+            if (conversando && !hablandoDimas) {
+                try { reconocimiento.abort(); setTimeout(() => { if (conversando && !hablandoDimas) reconocimiento.start(); }, 300); } catch(e) {}
             }
         }
 
-        function hacerBiip() {
-            try {
-                let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                let osc = audioCtx.createOscillator();
-                let gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.value = 880; 
-                gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start();
-                osc.stop(audioCtx.currentTime + 2.0); 
-            } catch(e) {}
-        }
-
-        function convertirNumeroEscrito(texto) {
-            const mapaNumeros = {
-                'un': 1, 'uno': 1, 'una': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 
-                'cinco': 5, 'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10,
-                'quince': 15, 'veinte': 20, 'treinta': 30, 'cuarenta': 40, 'cincuenta': 50
-            };
-            let limpio = texto;
-            for (let palabra in mapaNumeros) {
-                let regex = new RegExp('\\b' + palabra + '\\b', 'g');
-                limpio = limpio.replace(regex, mapaNumeros[palabra]);
-            }
-            return limpio;
-        }
-
-        // Cerebro de conversación natural (Sin frases robóticas ni saltos a YouTube por error)
-        function ejecutarConversacion(texto) {
-            const responseBox = document.getElementById("response-box");
+        // CEREBRO DE CONVERSACIÓN PURA (Preguntas y respuestas personales / normales)
+        function responderPregunta(pregunta) {
+            let p = pregunta.toLowerCase().trim();
             let respuesta = "";
 
-            let limpio = texto.replace("dimas", "").replace("dimás", "").trim();
-            limpio = convertirNumeroEscrito(limpio);
-
-            // 1. TEMPORIZADOR / CRONÓMETRO (Solo si se pide explícitamente)
-            if (limpio.includes("cronómetro") || limpio.includes("temporizador") || limpio.includes("cuenta regresiva")) {
-                let matchMin = limpio.match(/(\d+(?:\.\d+)?)\s*(minuto|minutos|min)/);
-                let matchSeg = limpio.match(/(\d+)\s*(segundo|segundos|seg)/);
-                
-                let milisegundos = 60 * 1000; 
-                let textoTiempo = "1 minuto";
-
-                if (matchMin) {
-                    let mins = parseFloat(matchMin[1]);
-                    milisegundos = mins * 60 * 1000;
-                    textoTiempo = `${mins} minuto${mins > 1 ? 's' : ''}`;
-                } else if (matchSeg) {
-                    let segs = parseInt(matchSeg[1]);
-                    milisegundos = segs * 1000;
-                    textoTiempo = `${segs} segundo${segs > 1 ? 's' : ''}`;
-                }
-
-                respuesta = `¡Fierro! Cronómetro puesto de ${textoTiempo}. Yo te aviso cuando caiga el tiempo.`;
-                responseBox.innerText = `Dimas dice: ${respuesta}`;
-                
-                hablarDimas(respuesta, () => {
-                    reiniciarEscucha();
-                });
-
-                setTimeout(() => {
-                    hacerBiip();
-                    hablarDimas(`¡Tiempo cumplido, compadre! Se acabó el cronómetro de ${textoTiempo}.`, () => {
-                        reiniciarEscucha();
-                    });
-                    document.getElementById("response-box").innerText = `⏰ ¡TIEMPO CUMPLIDO (${textoTiempo})!`;
-                }, milisegundos);
-
-                return;
-            } 
-            // 2. ALARMAS
-            else if (limpio.includes("alarma") || limpio.includes("despertador")) {
-                respuesta = "¡Arre pues! Abriendo el reloj para programar tu alarma.";
-                responseBox.innerText = `Dimas dice: ${respuesta}`;
-                hablarDimas(respuesta, () => {
-                    setTimeout(() => {
-                        if (/Android/i.test(navigator.userAgent)) {
-                            window.location.href = "intent://#Intent;action=android.intent.action.SET_ALARM;end;";
-                        } else {
-                            window.open("https://calendar.google.com", "_blank");
-                        }
-                        reiniciarEscucha();
-                    }, 500);
-                });
-                return;
-            } 
-            // 3. CONVERSACIÓN NATURAL Y PREGUNTAS GENERALES (Cero YouTube, pura plática)
-            else if (limpio.includes("hola") || limpio.includes("que onda") || limpio.includes("qué onda")) {
-                respuesta = "¡Qué onda, compadre! Aquí andamos al tiro, ¿qué cuentas?";
-            } else if (limpio.includes("cómo estás") || limpio.includes("como estas")) {
-                respuesta = "Al 100 y listos para lo que se ofrezca, viejo. ¿Y tú qué tal?";
-            } else if (limpio.includes("nombre")) {
-                respuesta = "Yo soy Dimas, tu compadre de confianza para cotorrear y ver los tiempos.";
-            } else if (limpio.includes("gracias")) {
-                respuesta = "De nada, viejo, para eso estamos los cuates.";
-            } else if (limpio.includes("qué hora es") || limpio.includes("que hora es")) {
-                let ahora = new Date();
-                let horas = ahora.getHours();
-                let minutos = ahora.getMinutes();
-                let ampm = horas >= 12 ? 'de la tarde' : 'de la mañana';
-                horas = horas % 12;
-                horas = horas ? horas : 12;
-                minutos = minutos < 10 ? '0' + minutos : minutos;
-                respuesta = `Son las ${horas} con ${minutos} minutos ${ampm}, compadre.`;
+            if (p.includes("hola") || p.includes("que onda") || p.includes("qué onda")) {
+                respuesta = "¡Qué onda, compadre! ¿Cómo va todo?";
+            } else if (p.includes("cómo estás") || p.includes("como estas")) {
+                respuesta = "Aquí andamos al tiro, viejo, listo para cotorrear un rato contigo.";
+            } else if (p.includes("cómo te llamas") || p.includes("tu nombre")) {
+                respuesta = "Me llamo Dimas, tu compadre y asistente personal.";
+            } else if (p.includes("qué edad tienes") || p.includes("cuántos años tienes")) {
+                respuesta = "Los años que me programaste, viejo, ¡estoy chavito todavía!";
+            } else if (p.includes("qué hora es") || p.includes("que hora es")) {
+                let d = new Date();
+                respuesta = "Son las " + d.getHours() + " con " + d.getMinutes() + " minutos, compadre.";
+            } else if (p.includes("qué haces") || p.includes("que haces")) {
+                respuesta = "Aquí nomás platicando contigo y al pendiente de lo que se ofrezca.";
             } else {
-                // Respuesta abierta y fluida para cualquier otra pregunta normal
-                respuesta = `Ah, caray... me dijiste '${texto}'. Simón, te escucho, cuéntame más de eso.`;
+                // Respuesta abierta para cualquier pregunta personal o tema de plática
+                respuesta = "Simón, te escucho con eso de " + pregunta + ". Cuéntame más detalles, viejo.";
             }
 
-            responseBox.innerText = `Dimas dice: ${respuesta}`;
-            hablarDimas(respuesta, () => {
-                reiniciarEscucha();
-            });
+            document.getElementById("response-box").innerText = "Dimas dice: " + respuesta;
+            hablar(respuesta, reiniciarMicro);
         }
 
-        function procesarTextoInput() {
-            const input = document.getElementById("userInput");
-            const texto = input.value.trim();
+        function procesarTexto() {
+            let input = document.getElementById("userInput");
+            let texto = input.value.trim();
             if (texto) {
-                ejecutarConversacion(texto);
+                responderPregunta(texto);
                 input.value = "";
             }
         }
 
-        document.getElementById("userInput").addEventListener("keypress", function(event) {
-            if (event.key === "Enter") {
-                procesarTextoInput();
-            }
+        document.getElementById("userInput").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") { procesarTexto(); }
         });
     </script>
-
 </body>
 </html>

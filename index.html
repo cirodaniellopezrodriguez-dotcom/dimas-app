@@ -110,28 +110,55 @@
     </div>
 
     <script>
+        // Memoria de la conversación para que Dimas se adapte
+        let historialChat = [];
+
+        function hablarDimas(texto) {
+            if ('speechSynthesis' in window) {
+                // Cancelar cualquier voz anterior para que hable al putazo
+                window.speechSynthesis.cancel();
+                let utterance = new SpeechSynthesisUtterance(texto);
+                utterance.lang = 'es-MX'; // Español México
+                utterance.rate = 1.0;     // Velocidad normal
+                utterance.pitch = 0.9;    // Tono un poco más recio/grueso
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
         function ejecutarComando(texto) {
             const textoLower = texto.toLowerCase();
             const responseBox = document.getElementById("response-box");
+            let respuesta = "";
+
+            // Guardar en la memoria la orden del usuario
+            historialChat.push({ de: 'usuario', texto: texto });
 
             if (textoLower.includes("reproducir") || textoLower.includes("música") || textoLower.includes("canción") || textoLower.includes("rola")) {
                 let busqueda = textoLower.replace("reproducir", "").replace("música", "").replace("canción", "").replace("rola", "").trim();
                 if (busqueda) {
-                    responseBox.innerText = `Dimas dice: ¡Arre! Buscando '${busqueda}' en YouTube, viejo...`;
+                    respuesta = `¡Arre! Abriendo '${busqueda}' en YouTube, viejo.`;
                     let url = `https://www.youtube.com/results?search_query=${encodeURIComponent(busqueda)}`;
-                    setTimeout(() => {
-                        window.open(url, '_blank');
-                    }, 800);
+                    window.open(url, '_blank');
                 } else {
-                    responseBox.innerText = "Dimas dice: ¿Qué rola quieres que ponga o qué? Dímela bien.";
+                    respuesta = "¿Qué rola quieres que ponga o qué? Dímela bien, viejo.";
                 }
-            } else if (textoLower.includes("hola")) {
-                responseBox.innerText = "Dimas dice: ¡Qué onda, compadre! ¿Qué vamos a hacer o qué?";
+            } else if (textoLower.includes("hola") || textoLower.includes("que onda")) {
+                respuesta = "¡Qué onda, compadre! ¿Qué vamos a hacer o qué?";
             } else if (textoLower.includes("nombre")) {
-                responseBox.innerText = "Dimas dice: Yo soy Dimas, tu asistente personal con todo el estilo norteño.";
+                respuesta = "Yo soy Dimas, tu asistente personal con todo el estilo norteño.";
+            } else if (historialChat.length > 3) {
+                // Dimas se adapta basándose en que ya llevan cotorreando un rato
+                respuesta = `A ver, compadre, sobre eso que me dices de '${texto}', ¡le seguimos dando con todo al proyecto!`;
             } else {
-                responseBox.innerText = `Dimas dice: Recibí tu orden, viejo: '${texto}'. A darle.`;
+                respuesta = `Recibí tu orden, viejo: '${texto}'. A darle recio.`;
             }
+
+            // Mostrar en pantalla y hablar en voz alta
+            responseBox.innerText = `Dimas dice: ${respuesta}`;
+            hablarDimas(respuesta);
+
+            // Guardar respuesta de Dimas en la memoria
+            historialChat.push({ de: 'dimas', texto: respuesta });
         }
 
         function procesarTextoInput() {
@@ -143,7 +170,7 @@
             }
         }
 
-        // Permitir enviar con la tecla Enter
+        // Enviar con la tecla Enter
         document.getElementById("userInput").addEventListener("keypress", function(event) {
             if (event.key === "Enter") {
                 procesarTextoInput();

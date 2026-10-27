@@ -127,7 +127,7 @@
         <button id="micBtn" class="btn-mic" onclick="alternarModoEscucha()">🔴 Activar Manos Libres (Escucha "Dimas")</button>
 
         <div class="btn-grupo">
-            <button onclick="ejecutarComando('pon una alarma a las 7 de la mañana')">⏰ Alarma</button>
+            <button onclick="ejecutarComando('pon un cronómetro de 1 minuto')">⏱️ Cronómetro 1 min</button>
             <button onclick="ejecutarComando('pon la rolita de cadetes de linares')">🎵 Rolita</button>
         </div>
 
@@ -183,19 +183,16 @@
                 document.getElementById("userInput").value = textoEscuchado;
 
                 if (!esperandoOrden) {
-                    // Modo descanso: Buscando la palabra clave "dimas" o "dimás"
                     if (textoEscuchado.includes("dimas") || textoEscuchado.includes("dimás")) {
                         esperandoOrden = true;
                         actualizarUIActivo("¡Mande, compadre! ¿Qué se ofrece?");
                         hablarDimas("¿Qué pasó, compadre?", () => {
-                            // Una vez que termina de hablar, abre el micro de inmediato para recibir la orden real
                             reiniciarReconocimiento();
                         });
                     } else {
                         reiniciarReconocimiento();
                     }
                 } else {
-                    // Modo activo: Ya escuchó el nombre, esta frase es la orden directa
                     esperandoOrden = false;
                     actualizarUIDescanso();
                     ejecutarComando(textoEscuchado);
@@ -228,15 +225,11 @@
                 btn.classList.add("escuchando");
                 btn.innerText = "🛑 Desactivar Manos Libres";
                 actualizarUIDescanso();
-                try {
-                    reconocimiento.start();
-                } catch(e) {}
+                try { reconocimiento.start(); } catch(e) {}
             } else {
                 modoManosLibres = false;
                 esperandoOrden = false;
-                try {
-                    reconocimiento.stop();
-                } catch(e) {}
+                try { reconocimiento.stop(); } catch(e) {}
                 btn.classList.remove("escuchando");
                 btn.innerText = "🔴 Activar Manos Libres (Escucha 'Dimas')";
                 document.getElementById("status-text").innerText = "Manos libres apagado.";
@@ -248,9 +241,7 @@
 
         function reiniciarReconocimiento() {
             if (modoManosLibres) {
-                try {
-                    reconocimiento.start();
-                } catch(e) {}
+                try { reconocimiento.start(); } catch(e) {}
             }
         }
 
@@ -267,6 +258,22 @@
             badge.innerText = "¡Modo Activo!";
             document.getElementById("status-text").innerText = mensaje;
             document.getElementById("response-box").innerText = `Dimas dice: ${mensaje}`;
+        }
+
+        // Función para emitir sonido de alarma (Beep) usando Web Audio API
+        function hacerBiip() {
+            try {
+                let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = 880; // Tono agudo de alerta
+                gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 2.0); // Suena 2 segundos
+            } catch(e) {}
         }
 
         function ejecutarComando(texto) {
@@ -318,19 +325,40 @@
                 });
                 return;
             } 
-            else if (comandoLimpio.includes("cronómetro") || comandoLimpio.includes("temporizador")) {
-                respuesta = "¡Fierro! Abriendo el cronómetro en chiza, viejo.";
+            // NUEVO: Cronómetro / Temporizador Interno Real
+            else if (comandoLimpio.includes("cronómetro") || comandoLimpio.includes("temporizador") || comandoLimpio.includes("cuenta regresiva")) {
+                
+                // Extraer minutos o segundos de la orden del usuario
+                let matchMin = comandoLimpio.match(/(\d+)\s*(minuto|minutos|min)/);
+                let matchSeg = comandoLimpio.match(/(\d+)\s*(segundo|segundos|seg)/);
+                
+                let milisegundos = 60 * 1000; // Por defecto 1 minuto si no especifica
+                let textoTiempo = "1 minuto";
+
+                if (matchMin) {
+                    let mins = parseInt(matchMin[1]);
+                    milisegundos = mins * 60 * 1000;
+                    textoTiempo = `${mins} minuto${mins > 1 ? 's' : ''}`;
+                } else if (matchSeg) {
+                    let segs = parseInt(matchSeg[1]);
+                    milisegundos = segs * 1000;
+                    textoTiempo = `${segs} segundo${segs > 1 ? 's' : ''}`;
+                }
+
+                respuesta = `¡Fierro! Cronómetro puesto de ${textoTiempo}. Yo te aviso cuando caiga el tiempo, viejo.`;
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
+                
                 hablarDimas(respuesta, () => {
-                    setTimeout(() => {
-                        if (/Android/i.test(navigator.userAgent)) {
-                            window.location.href = "intent://#Intent;action=android.intent.action.SET_TIMER;end;";
-                        } else {
-                            alert("Cronómetro solicitado, compadre.");
-                        }
-                        reiniciarReconocimiento();
-                    }, 500);
+                    reiniciarReconocimiento();
                 });
+
+                // Activar el temporizador interno en JavaScript
+                setTimeout(() => {
+                    hacerBiip();
+                    hablarDimas(`¡Tiempo cumplido, compadre! Se acabó el cronómetro de ${textoTiempo}. ¡Despierta!`);
+                    document.getElementById("response-box").innerText = `⏰ ¡TIEMPO CUMPLIDO (${textoTiempo})!`;
+                }, milisegundos);
+
                 return;
             }
             else if (comandoLimpio.includes("hola") || comandoLimpio.includes("que onda")) {
@@ -343,7 +371,6 @@
 
             responseBox.innerText = `Dimas dice: ${respuesta}`;
             hablarDimas(respuesta, () => {
-                // Al terminar de hablar, regresa a modo descanso escuchando la palabra clave
                 actualizarUIDescanso();
                 reiniciarReconocimiento();
             });

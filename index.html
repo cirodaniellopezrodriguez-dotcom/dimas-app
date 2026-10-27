@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dimas - Sistema de Tiempo y Voz</title>
+    <title>Dimas - Conversación y Tiempos</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -106,12 +106,12 @@
     <div class="card">
         <h2>🤠 Dimas</h2>
         <div id="status-badge" class="status-badge badge-inactivo">Sistema en Pausa</div>
-        <p id="status-text">Inicia el sistema para platicar con Dimas.</p>
+        <p id="status-text">Inicia la plática con Dimas.</p>
 
-        <input type="text" id="userInput" placeholder="Escribe tu orden o háblale..." />
+        <input type="text" id="userInput" placeholder="Escribe algo o háblale..." />
         
-        <button onclick="procesarTextoInput()">Enviar comando escrito 🚀</button>
-        <button id="mainBtn" onclick="alternarSistemaVoz()">🎙️ Iniciar Conversación</button>
+        <button onclick="procesarTextoInput()">Enviar texto 🚀</button>
+        <button id="mainBtn" onclick="alternarSistemaVoz()">🎙️ Iniciar Plática</button>
 
         <div id="response-box">Aquí ando al pendiente, viejo.</div>
     </div>
@@ -121,13 +121,11 @@
         let sistemaActivo = false;
         let estaHablandoDimas = false;
 
-        // Motor de voz sintética limpio y sincronizado
         function hablarDimas(texto, callback) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 estaHablandoDimas = true;
                 
-                // Apagamos el micro para que Dimas no se escuche a sí mismo
                 if (reconocimiento) {
                     try { reconocimiento.stop(); } catch(e) {}
                 }
@@ -165,7 +163,6 @@
             };
         }
 
-        // Configuración estricta del reconocimiento de voz
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             reconocimiento = new SpeechRecognition();
@@ -179,8 +176,7 @@
                 let textoEscuchado = event.results[0][0].transcript.trim().toLowerCase();
                 document.getElementById("userInput").value = textoEscuchado;
 
-                // Procesamos la orden hablada
-                ejecutarComando(textoEscuchado);
+                ejecutarConversacion(textoEscuchado);
             };
 
             reconocimiento.onerror = function(event) {
@@ -190,7 +186,6 @@
             };
 
             reconocimiento.onend = function() {
-                // Al terminar de capturar, si el sistema sigue activo, reabre el micro en automático
                 if (sistemaActivo && !estaHablandoDimas) {
                     setTimeout(reiniciarEscucha, 500);
                 }
@@ -209,22 +204,22 @@
             if (!sistemaActivo) {
                 sistemaActivo = true;
                 btn.classList.add("activo");
-                btn.innerText = "🛑 Detener Conversación";
+                btn.innerText = "🛑 Detener Plática";
                 badge.className = "status-badge badge-activo";
-                badge.innerText = "Conversación Activa";
-                document.getElementById("status-text").innerText = "Te escucho. Pide tu alarma o temporizador.";
+                badge.innerText = "Plática Activa";
+                document.getElementById("status-text").innerText = "Te escucho. Dime lo que quieras, compadre.";
                 
-                hablarDimas("¡Fierro! Conversación iniciada. ¿Qué se ofrece, compadre?", () => {
+                hablarDimas("¡Qué onda, compadre! ¿De qué platicamos o qué se te ofrece?", () => {
                     reiniciarEscucha();
                 });
             } else {
                 sistemaActivo = false;
                 try { reconocimiento.stop(); } catch(e) {}
                 btn.classList.remove("activo");
-                btn.innerText = "🎙️ Iniciar Conversación";
+                btn.innerText = "🎙️ Iniciar Plática";
                 badge.className = "status-badge badge-inactivo";
                 badge.innerText = "Sistema en Pausa";
-                document.getElementById("status-text").innerText = "Inicia el sistema para platicar con Dimas.";
+                document.getElementById("status-text").innerText = "Inicia la plática con Dimas.";
             }
         }
 
@@ -241,7 +236,6 @@
             }
         }
 
-        // Tono de alerta (Beep) para el temporizador
         function hacerBiip() {
             try {
                 let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -257,7 +251,6 @@
             } catch(e) {}
         }
 
-        // Traductor de números escritos a dígitos
         function convertirNumeroEscrito(texto) {
             const mapaNumeros = {
                 'un': 1, 'uno': 1, 'una': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 
@@ -272,21 +265,20 @@
             return limpio;
         }
 
-        // Procesador central de órdenes (Enfocado 100% en Tiempos y Conversación)
-        function ejecutarComando(texto) {
+        // Cerebro de conversación natural (Sin frases robóticas ni saltos a YouTube por error)
+        function ejecutarConversacion(texto) {
             const responseBox = document.getElementById("response-box");
             let respuesta = "";
 
-            let comandoLimpio = texto.replace("dimas", "").replace("dimás", "").trim();
-            comandoLimpio = convertirNumeroEscrito(comandoLimpio);
+            let limpio = texto.replace("dimas", "").replace("dimás", "").trim();
+            limpio = convertirNumeroEscrito(limpio);
 
-            // 1. GESTIÓN DE CRONÓMETRO / TEMPORIZADOR POR VOZ
-            if (comandoLimpio.includes("cronómetro") || comandoLimpio.includes("temporizador") || comandoLimpio.includes("cuenta regresiva")) {
+            // 1. TEMPORIZADOR / CRONÓMETRO (Solo si se pide explícitamente)
+            if (limpio.includes("cronómetro") || limpio.includes("temporizador") || limpio.includes("cuenta regresiva")) {
+                let matchMin = limpio.match(/(\d+(?:\.\d+)?)\s*(minuto|minutos|min)/);
+                let matchSeg = limpio.match(/(\d+)\s*(segundo|segundos|seg)/);
                 
-                let matchMin = comandoLimpio.match(/(\d+(?:\.\d+)?)\s*(minuto|minutos|min)/);
-                let matchSeg = comandoLimpio.match(/(\d+)\s*(segundo|segundos|seg)/);
-                
-                let milisegundos = 60 * 1000; // Por defecto 1 minuto si no especifica
+                let milisegundos = 60 * 1000; 
                 let textoTiempo = "1 minuto";
 
                 if (matchMin) {
@@ -299,17 +291,16 @@
                     textoTiempo = `${segs} segundo${segs > 1 ? 's' : ''}`;
                 }
 
-                respuesta = `¡Fierro! Cronómetro puesto de ${textoTiempo}. Yo te aviso cuando se cumpla, viejo.`;
+                respuesta = `¡Fierro! Cronómetro puesto de ${textoTiempo}. Yo te aviso cuando caiga el tiempo.`;
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
                 
                 hablarDimas(respuesta, () => {
                     reiniciarEscucha();
                 });
 
-                // Ejecución interna del tiempo
                 setTimeout(() => {
                     hacerBiip();
-                    hablarDimas(`¡Tiempo cumplido, compadre! Se acabó el cronómetro de ${textoTiempo}. ¡Despierta!`, () => {
+                    hablarDimas(`¡Tiempo cumplido, compadre! Se acabó el cronómetro de ${textoTiempo}.`, () => {
                         reiniciarEscucha();
                     });
                     document.getElementById("response-box").innerText = `⏰ ¡TIEMPO CUMPLIDO (${textoTiempo})!`;
@@ -317,9 +308,9 @@
 
                 return;
             } 
-            // 2. GESTIÓN DE ALARMAS
-            else if (comandoLimpio.includes("alarma") || comandoLimpio.includes("despertador")) {
-                respuesta = "¡Arre pues! Abriendo la aplicación de reloj para programar tu alarma, viejo.";
+            // 2. ALARMAS
+            else if (limpio.includes("alarma") || limpio.includes("despertador")) {
+                respuesta = "¡Arre pues! Abriendo el reloj para programar tu alarma.";
                 responseBox.innerText = `Dimas dice: ${respuesta}`;
                 hablarDimas(respuesta, () => {
                     setTimeout(() => {
@@ -333,15 +324,27 @@
                 });
                 return;
             } 
-            // 3. CONVERSACIÓN GENERAL Y SALUDOS
-            else if (comandoLimpio.includes("hola") || comandoLimpio.includes("que onda")) {
-                respuesta = "¡Qué onda, compadre! ¿Qué programamos o qué?";
-            } else if (comandoLimpio.includes("nombre")) {
-                respuesta = "Yo soy Dimas, tu asistente personal de tiempos y alarmas.";
-            } else if (comandoLimpio.includes("gracias")) {
-                respuesta = "Para eso estamos, viejo. ¿Qué más se ofrece?";
+            // 3. CONVERSACIÓN NATURAL Y PREGUNTAS GENERALES (Cero YouTube, pura plática)
+            else if (limpio.includes("hola") || limpio.includes("que onda") || limpio.includes("qué onda")) {
+                respuesta = "¡Qué onda, compadre! Aquí andamos al tiro, ¿qué cuentas?";
+            } else if (limpio.includes("cómo estás") || limpio.includes("como estas")) {
+                respuesta = "Al 100 y listos para lo que se ofrezca, viejo. ¿Y tú qué tal?";
+            } else if (limpio.includes("nombre")) {
+                respuesta = "Yo soy Dimas, tu compadre de confianza para cotorrear y ver los tiempos.";
+            } else if (limpio.includes("gracias")) {
+                respuesta = "De nada, viejo, para eso estamos los cuates.";
+            } else if (limpio.includes("qué hora es") || limpio.includes("que hora es")) {
+                let ahora = new Date();
+                let horas = ahora.getHours();
+                let minutos = ahora.getMinutes();
+                let ampm = horas >= 12 ? 'de la tarde' : 'de la mañana';
+                horas = horas % 12;
+                horas = horas ? horas : 12;
+                minutos = minutos < 10 ? '0' + minutos : minutos;
+                respuesta = `Son las ${horas} con ${minutos} minutos ${ampm}, compadre.`;
             } else {
-                respuesta = `Recibí tu orden, viejo: '${texto}'. Pregúntame por una alarma o cronómetro.`;
+                // Respuesta abierta y fluida para cualquier otra pregunta normal
+                respuesta = `Ah, caray... me dijiste '${texto}'. Simón, te escucho, cuéntame más de eso.`;
             }
 
             responseBox.innerText = `Dimas dice: ${respuesta}`;
@@ -354,7 +357,7 @@
             const input = document.getElementById("userInput");
             const texto = input.value.trim();
             if (texto) {
-                ejecutarComando(texto);
+                ejecutarConversacion(texto);
                 input.value = "";
             }
         }

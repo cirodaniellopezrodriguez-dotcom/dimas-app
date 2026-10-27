@@ -74,7 +74,7 @@
 
     <div class="card">
         <h2>🤠 Dimas</h2>
-        <p id="status-text">Picale para iniciar la plática.</p>
+        <p id="status-text">Pícale para iniciar la plática.</p>
         <input type="text" id="userInput" placeholder="Escribe algo..." />
         <button onclick="procesarTexto()">Enviar 🚀</button>
         <button id="btnConversar" onclick="alternarConversacion()">🎙️ Iniciar Conversación</button>
@@ -114,7 +114,11 @@
             reconocimiento.onresult = (event) => {
                 if (hablandoDimas) return;
                 let texto = event.results[0][0].transcript.trim();
-                document.getElementById("userInput").value = texto;
+                
+                // Ya no rellenamos el input con lo que dijo el usuario para evitar que se repita o estorbe
+                document.getElementById("userInput").value = ""; 
+
+                // Mandamos directo la pregunta a la lógica sin repetir nada
                 responderPregunta(texto);
             };
 
@@ -135,7 +139,7 @@
                 conversando = true;
                 btn.classList.add("activo");
                 btn.innerText = "🛑 Detener Conversación";
-                hablar("¡Qué onda, compadre! ¿De qué quieres que platiquemos o qué me quieres preguntar?", reiniciarMicro);
+                hablar("¡Qué onda, compadre! ¿De qué platicamos?", reiniciarMicro);
             } else {
                 conversando = false;
                 try { reconocimiento.stop(); } catch(e) {}
@@ -151,7 +155,7 @@
             }
         }
 
-        // CEREBRO DE CONVERSACIÓN PURA (Preguntas y respuestas personales / normales)
+        // CEREBRO DE CONVERSACIÓN (Directo y sin repetir tu frase)
         function responderPregunta(pregunta) {
             let p = pregunta.toLowerCase().trim();
             let respuesta = "";
@@ -159,19 +163,17 @@
             if (p.includes("hola") || p.includes("que onda") || p.includes("qué onda")) {
                 respuesta = "¡Qué onda, compadre! ¿Cómo va todo?";
             } else if (p.includes("cómo estás") || p.includes("como estas")) {
-                respuesta = "Aquí andamos al tiro, viejo, listo para cotorrear un rato contigo.";
+                respuesta = "Aquí andando al tiro, viejo, listo para cotorrear un rato.";
             } else if (p.includes("cómo te llamas") || p.includes("tu nombre")) {
                 respuesta = "Me llamo Dimas, tu compadre y asistente personal.";
-            } else if (p.includes("qué edad tienes") || p.includes("cuántos años tienes")) {
-                respuesta = "Los años que me programaste, viejo, ¡estoy chavito todavía!";
             } else if (p.includes("qué hora es") || p.includes("que hora es")) {
                 let d = new Date();
                 respuesta = "Son las " + d.getHours() + " con " + d.getMinutes() + " minutos, compadre.";
             } else if (p.includes("qué haces") || p.includes("que haces")) {
-                respuesta = "Aquí nomás platicando contigo y al pendiente de lo que se ofrezca.";
+                respuesta = "Aquí nomás platicando contigo, viejo.";
             } else {
-                // Respuesta abierta para cualquier pregunta personal o tema de plática
-                respuesta = "Simón, te escucho con eso de " + pregunta + ". Cuéntame más detalles, viejo.";
+                // Respuesta abierta natural sin repetir lo que dijiste
+                respuesta = " Simón, te escucho con eso. Cuéntame más detalles, viejo.";
             }
 
             document.getElementById("response-box").innerText = "Dimas dice: " + respuesta;
